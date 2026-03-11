@@ -13,6 +13,7 @@ import re
 from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()
+from supabase import create_client
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 from tarifas import TARIFAS, AEROPUERTO_BOGOTA, RUTAS, RUTAS_IDA_VUELTA, FISCAL, formatear_precio
@@ -23,6 +24,10 @@ from distancias import buscar_distancia
 # ─── CONFIGURACION ────────────────────────────────────────────────────────────
 TELEGRAM_TOKEN    = os.environ["TELEGRAM_TOKEN"]
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+SUPABASE_URL      = os.environ["SUPABASE_URL"]
+SUPABASE_KEY      = os.environ["SUPABASE_KEY"]
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 LOGO_PATH         = "logo.jpeg"
 MAX_TURNOS        = 12   # Máximo de pares usuario/bot por conversación (~24 mensajes)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -474,6 +479,28 @@ async def manejar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown"
             )
             logging.info(f"[{chat_id}] PDF generado: {nombre_archivo}")
+
+            try:
+                supabase.table("cotizaciones").insert({
+                    "numero":           pdf_numero,
+                    "comercial_nombre": usuario,
+                    "chat_id":          chat_id,
+                    "origen":           datos_pdf.get("origen"),
+                    "destino":          datos_pdf.get("destino"),
+                    "fecha_servicio":   datos_pdf.get("fecha_servicio"),
+                    "hora_servicio":    datos_pdf.get("hora_servicio"),
+                    "pasajeros":        datos_pdf.get("pasajeros"),
+                    "vehiculo":         datos_pdf.get("vehiculo"),
+                    "vehiculo_clave":   datos_pdf.get("vehiculo_clave"),
+                    "tipo_servicio":    datos_pdf.get("tipo_servicio"),
+                    "distancia_km":     datos_pdf.get("distancia_km"),
+                    "total":            datos_pdf.get("total"),
+                    "recargos":         datos_pdf.get("recargos", []),
+                    "estado":           "pendiente",
+                }).execute()
+                logging.info(f"[{chat_id}] Cotización {pdf_numero} guardada en Supabase")
+            except Exception as db_err:
+                logging.error(f"Error guardando en Supabase: {db_err}")
 
         except Exception as e:
             logging.error(f"Error generando PDF: {e}", exc_info=True)

@@ -427,8 +427,8 @@ def bloque_desglose(ES, desglose):
     ]]
     for item in desglose:
         filas.append([
-            Paragraph(item.get('concepto', ''), ES['cuerpo']),
-            Paragraph(item.get('valor',    ''), ES['tabla_vR']),
+            Paragraph(str(item.get('concepto', '')), ES['cuerpo']),
+            Paragraph(str(item.get('valor',    '')), ES['tabla_vR']),
         ])
     t = Table(filas, colWidths=[13*cm, 5*cm])
     t.setStyle(TableStyle([

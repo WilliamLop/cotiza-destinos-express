@@ -476,7 +476,7 @@ async def manejar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logging.info(f"[{chat_id}] PDF generado: {nombre_archivo}")
 
         except Exception as e:
-            logging.error(f"Error generando PDF: {e}")
+            logging.error(f"Error generando PDF: {e}", exc_info=True)
             await update.message.reply_text(
                 "⚠️ La cotización fue procesada pero hubo un inconveniente al generar el PDF. "
                 "Por favor contáctenos directamente para recibirlo.",

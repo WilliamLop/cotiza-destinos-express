@@ -4,6 +4,7 @@ Diseño premium: Negro · Dorado · Blanco
 Tipografías: Montserrat (títulos) · Poppins (cuerpo)
 """
 
+import io
 import os
 import json
 import glob as glob_module
@@ -69,7 +70,7 @@ def estilos():
     return {
         # Header
         'h_empresa':   E('h_empresa',   fontName=F['titulo'],       fontSize=14,  textColor=BLANCO),
-        'h_nit':       E('h_nit',       fontName=F['cuerpo_bold'],  fontSize=8.5, textColor=DORADO),
+        'h_nit':       E('h_nit',       fontName=F['cuerpo_bold'],  fontSize=8.5, textColor=DORADO, spaceBefore=5),
         'h_sub':       E('h_sub',       fontName=F['cuerpo'],       fontSize=8,   textColor=colors.HexColor('#CCCCCC')),
         'h_dorado':    E('h_dorado',    fontName=F['cuerpo_bold'],  fontSize=8,   textColor=DORADO),
         # Documento
@@ -188,8 +189,8 @@ def bloque_meta(ES, numero, fecha_emision, vence):
     t = Table(data, colWidths=[6*cm, 6*cm, 6*cm])
     t.setStyle(TableStyle([
         ('BACKGROUND',    (0, 0), (-1, -1), GRIS),
-        ('TOPPADDING',    (0, 0), (-1, -1), 7),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+        ('TOPPADDING',    (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
         ('LEFTPADDING',   (0, 0), (-1, -1), 10),
         ('BOX',           (0, 0), (-1, -1), 0.5, GRIS_MED),
         ('LINEBELOW',     (0, 0), (-1,  0), 2,   DORADO),
@@ -226,18 +227,18 @@ def bloque_servicio(ES, datos):
     ]))
 
     detalles = Table([
-        [Paragraph("📅  Fecha del servicio",    ES['etiqueta']),
-         Paragraph("🕐  Hora de salida",        ES['etiqueta']),
-         Paragraph("👥  Pasajeros",             ES['etiqueta']),
-         Paragraph("📏  Distancia",             ES['etiqueta'])],
+        [Paragraph("Fecha del servicio",    ES['etiqueta']),
+         Paragraph("Hora de salida",        ES['etiqueta']),
+         Paragraph("Pasajeros",             ES['etiqueta']),
+         Paragraph("Distancia",             ES['etiqueta'])],
         [Paragraph(fecha,    ES['campo']),
          Paragraph(hora,     ES['campo']),
          Paragraph(pax,      ES['campo']),
          Paragraph(dist_txt, ES['campo'])],
-        [Paragraph("🚗  Vehículo recomendado",  ES['etiqueta']),
-         Paragraph("👤  Capacidad",             ES['etiqueta']),
-         Paragraph("🛣️  Tipo de servicio",      ES['etiqueta']),
-         Paragraph("",                           ES['etiqueta'])],
+        [Paragraph("Vehiculo recomendado",  ES['etiqueta']),
+         Paragraph("Capacidad",             ES['etiqueta']),
+         Paragraph("Tipo de servicio",      ES['etiqueta']),
+         Paragraph("",                      ES['etiqueta'])],
         [Paragraph(vehiculo, ES['highlight']),
          Paragraph(cap,      ES['campo']),
          Paragraph(tipo,     ES['campo']),
@@ -259,33 +260,87 @@ def bloque_servicio(ES, datos):
 
 def bloque_precio(ES, total, recargos):
     """
-    Caja dorada con valor único, incluidos y recargos.
+    Caja dorada con precio + sección negra con 4 tarjetas de lo que incluye.
+    Retorna lista de elementos.
     """
     precio_txt = cop(total)
     rec_txt = ("Recargos aplicados: " + "  |  ".join(recargos)) if recargos else ""
 
-    filas = [
+    # ── Caja dorada: precio ───────────────────────────────────────────────────
+    precio_filas = [
         [Paragraph("VALOR TOTAL DEL SERVICIO", ES['p_label'])],
-        [Paragraph("🇨🇴  PESOS COLOMBIANOS (COP)  ·  NO DÓLARES", ES['p_divisa'])],
+        [Paragraph("PESOS COLOMBIANOS (COP)  ·  NO DÓLARES", ES['p_divisa'])],
         [Paragraph(f"<b>{precio_txt}</b>", ES['p_valor'])],
-        [Paragraph("✅  Incluye: conductor profesional · combustible · peajes · póliza de seguro", ES['p_nota'])],
         [Paragraph("No incluye IVA salvo indicación expresa", ES['p_nota'])],
     ]
     if rec_txt:
-        filas.append([Paragraph(rec_txt, ES['p_nota'])])
+        precio_filas.append([Paragraph(rec_txt, ES['p_nota'])])
 
-    t = Table(filas, colWidths=[18*cm])
-    t.setStyle(TableStyle([
+    t_precio = Table(precio_filas, colWidths=[18*cm])
+    t_precio.setStyle(TableStyle([
         ('BACKGROUND',    (0, 0), (-1, -1), DORADO),
         ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING',    (0, 0), (0,  0),  10),
+        ('TOPPADDING',    (0, 0), (0,  0),  12),
         ('TOPPADDING',    (1, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        # Línea separadora bajo la etiqueta de divisa
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
         ('LINEBELOW',     (0, 1), (-1,  1), 0.8, NEGRO),
     ]))
-    return t
+
+    # ── Tarjetas negras: lo que incluye ──────────────────────────────────────
+    est_sec = E('inc_sec', fontName=F['titulo'],      fontSize=8.5, textColor=DORADO,                          alignment=TA_CENTER)
+    est_tit = E('inc_tit', fontName=F['titulo'],      fontSize=11,  textColor=DORADO,  leading=14,             alignment=TA_CENTER)
+    est_sub = E('inc_sub', fontName=F['cuerpo'],      fontSize=6.5, textColor=colors.HexColor('#999999'), leading=9, alignment=TA_CENTER)
+
+    items = [
+        ("CONDUCTOR",   "profesional certificado"),
+        ("COMBUSTIBLE", "incluido en tarifa"),
+        ("PEAJES",      "todos incluidos"),
+        ("SEGURO",      "póliza incluida"),
+    ]
+    col_w = 18 * cm / 4
+
+    def _card(titulo, sub):
+        t = Table([
+            [Paragraph(titulo, est_tit)],
+            [Paragraph(sub,   est_sub)],
+        ], colWidths=[col_w - 0.4*cm])
+        t.setStyle(TableStyle([
+            ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING',    (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 4),
+        ]))
+        return t
+
+    t_header = Table(
+        [[Paragraph("LO QUE INCLUYE SU SERVICIO", est_sec)]],
+        colWidths=[18*cm]
+    )
+    t_header.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), NEGRO),
+        ('TOPPADDING',    (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+        ('LINEBELOW',     (0, 0), (-1, -1), 0.5, colors.HexColor('#2A2A2A')),
+    ]))
+
+    t_cards = Table(
+        [[_card(*item) for item in items]],
+        colWidths=[col_w] * 4
+    )
+    t_cards.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), NEGRO),
+        ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING',    (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LINEBEFORE',    (1, 0), (3, 0),   0.5, colors.HexColor('#2A2A2A')),
+        ('LINEBELOW',     (0, 0), (-1, -1), 2,   DORADO),
+    ]))
+
+    return [t_precio, t_header, t_cards]
 
 
 def bloque_galeria_vehiculo(ES, vehiculo_clave):
@@ -324,7 +379,7 @@ def bloque_galeria_vehiculo(ES, vehiculo_clave):
     while len(celdas) < 3:
         celdas.append(Paragraph("", ES['cuerpo']))
 
-    titulo = Paragraph("🚐  VEHÍCULO ASIGNADO PARA SU SERVICIO", ES['seccion'])
+    titulo = Paragraph("VEHICULO ASIGNADO PARA SU SERVICIO", ES['seccion'])
 
     t = Table([celdas], colWidths=[COL_W, COL_W, COL_W])
     t.setStyle(TableStyle([
@@ -343,19 +398,19 @@ def bloque_galeria_vehiculo(ES, vehiculo_clave):
 
 
 def bloque_pagos(ES):
-    titulo = Paragraph("💳  MÉTODOS DE PAGO DISPONIBLES", ES['seccion'])
+    titulo = Paragraph("MÉTODOS DE PAGO DISPONIBLES", ES['seccion'])
     data = [[
-        Paragraph("🏢  <b>Facturación Empresarial</b>\nPago a 30 días\nCorte mensual 1–30",   ES['cuerpo']),
-        Paragraph("💳  <b>Pago Inmediato</b>\nTransferencia bancaria\nNequi · Daviplata",     ES['cuerpo']),
-        Paragraph("💰  <b>Tarjeta de Crédito</b>\nDatafono (Bogotá)\nLink de pago (+8%)",     ES['cuerpo']),
+        Paragraph("<b>Facturación Empresarial</b><br/>Pago a 30 días<br/>Corte mensual 1–30",   ES['cuerpo']),
+        Paragraph("<b>Pago Inmediato</b><br/>Transferencia bancaria<br/>Nequi · Daviplata",     ES['cuerpo']),
+        Paragraph("<b>Tarjeta de Crédito</b><br/>Datáfono (Bogotá)<br/>Link de pago (+8%)",     ES['cuerpo']),
     ]]
     t = Table(data, colWidths=[6*cm, 6*cm, 6*cm])
     t.setStyle(TableStyle([
         ('GRID',          (0, 0), (-1, -1), 0.5, GRIS_MED),
         ('BACKGROUND',    (0, 0), (-1, -1), GRIS),
         ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING',    (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
+        ('TOPPADDING',    (0, 0), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
         ('LEFTPADDING',   (0, 0), (-1, -1), 10),
         ('LINEABOVE',     (0, 0), (-1,  0), 2, DORADO),
     ]))
@@ -419,9 +474,9 @@ def bloque_certificaciones(ES):
 def bloque_contacto(ES):
     titulo = Paragraph("PARA CONFIRMAR SU RESERVA", ES['seccion'])
     data = [[
-        Paragraph("📱  <b>WhatsApp / Llamadas</b>\n+57 302 4060101",                                          ES['cuerpo']),
-        Paragraph("✉️  <b>Correo electrónico</b>\ncomercial@destinosexpress.com",                            ES['cuerpo']),
-        Paragraph("🌐  <b>Página web</b>\nwww.destinosexpress.com",                                          ES['cuerpo']),
+        Paragraph("<b>WhatsApp / Llamadas</b><br/>+57 302 4060101",                ES['cuerpo']),
+        Paragraph("<b>Correo electrónico</b><br/>comercial@destinosexpress.com",   ES['cuerpo']),
+        Paragraph("<b>Página web</b><br/>www.destinosexpress.com",                 ES['cuerpo']),
     ]]
     t = Table(data, colWidths=[6*cm, 6*cm, 6*cm])
     t.setStyle(TableStyle([
@@ -461,7 +516,7 @@ def bloque_footer(ES):
 
 def generar_pdf(datos: dict, logo_path: str = "logo.jpeg") -> tuple:
     """
-    Genera el PDF de cotización y devuelve (ruta_archivo, numero_cotizacion).
+    Genera el PDF de cotización y devuelve (BytesIO, numero_cotizacion).
 
     Campos esperados en datos:
       origen, destino, fecha_servicio, hora_servicio, pasajeros,
@@ -470,14 +525,13 @@ def generar_pdf(datos: dict, logo_path: str = "logo.jpeg") -> tuple:
       vehiculo_clave (ej: "camioneta", "van_ejecutiva", "van_grande", "bus"),
       notas (opcional)
     """
-    os.makedirs('cotizaciones', exist_ok=True)
     numero        = numero_cotizacion()
-    ruta          = f"cotizaciones/{numero}.pdf"
+    buffer        = io.BytesIO()
     fecha_emision = datetime.now().strftime("%d/%m/%Y  %H:%M")
     vence         = (datetime.now() + timedelta(hours=48)).strftime("%d/%m/%Y  %H:%M")
 
     doc = SimpleDocTemplate(
-        ruta, pagesize=A4,
+        buffer, pagesize=A4,
         rightMargin=1.5*cm, leftMargin=1.5*cm,
         topMargin=1.5*cm,   bottomMargin=1.5*cm,
     )
@@ -491,24 +545,24 @@ def generar_pdf(datos: dict, logo_path: str = "logo.jpeg") -> tuple:
     story += [
         bloque_header(ES, logo_path),
         linea_dorada(),
-        S(1, 0.4*cm),
+        S(1, 0.25*cm),
         Paragraph("COTIZACIÓN DE SERVICIO DE TRANSPORTE ESPECIAL", ES['titulo_doc']),
-        S(1, 0.15*cm),
+        S(1, 0.08*cm),
         bloque_meta(ES, numero, fecha_emision, vence),
-        S(1, 0.45*cm),
-        Paragraph("📍  DETALLE DEL SERVICIO SOLICITADO", ES['seccion']),
+        S(1, 0.28*cm),
+        Paragraph("DETALLE DEL SERVICIO SOLICITADO", ES['seccion']),
         *bloque_servicio(ES, datos),
-        S(1, 0.45*cm),
-        bloque_precio(ES, datos['total'], datos.get('recargos', [])),
+        S(1, 0.28*cm),
+        *bloque_precio(ES, datos['total'], datos.get('recargos', [])),
     ]
 
     if datos.get('notas'):
-        story += [S(1, 0.2*cm), Paragraph(f"ℹ️  {datos['notas']}", ES['pequeño'])]
+        story += [S(1, 0.12*cm), Paragraph(datos['notas'], ES['pequeño'])]
 
     story += [
-        S(1, 0.45*cm),
+        S(1, 0.3*cm),
         *bloque_pagos(ES),
-        S(1, 0.5*cm),
+        S(1, 0.25*cm),
         bloque_footer(ES),
     ]
 
@@ -528,4 +582,5 @@ def generar_pdf(datos: dict, logo_path: str = "logo.jpeg") -> tuple:
     story += [S(1, 0.5*cm), bloque_footer(ES)]
 
     doc.build(story)
-    return ruta, numero
+    buffer.seek(0)
+    return buffer, numero

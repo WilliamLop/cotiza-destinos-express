@@ -460,20 +460,19 @@ async def manejar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             await context.bot.send_chat_action(chat_id=chat_id, action="upload_document")
 
-            ruta_pdf, pdf_numero = generar_pdf(datos_pdf, logo_path=LOGO_PATH)
+            pdf_bytes, pdf_numero = generar_pdf(datos_pdf, logo_path=LOGO_PATH)
             nombre_archivo = f"Cotizacion_{pdf_numero}_DestinosExpress.pdf"
 
-            with open(ruta_pdf, 'rb') as archivo_pdf:
-                await update.message.reply_document(
-                    document=archivo_pdf,
-                    filename=nombre_archivo,
-                    caption=(
-                        f"📄 *Cotización {pdf_numero}*\n"
-                        f"Destinos Express S.A.S.\n"
-                        f"_Válida por 48 horas_"
-                    ),
-                    parse_mode="Markdown"
-                )
+            await update.message.reply_document(
+                document=pdf_bytes,
+                filename=nombre_archivo,
+                caption=(
+                    f"📄 *Cotización {pdf_numero}*\n"
+                    f"Destinos Express S.A.S.\n"
+                    f"_Válida por 48 horas_"
+                ),
+                parse_mode="Markdown"
+            )
             logging.info(f"[{chat_id}] PDF generado: {nombre_archivo}")
 
         except Exception as e:

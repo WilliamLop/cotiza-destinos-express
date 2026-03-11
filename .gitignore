@@ -1,0 +1,21 @@
+# Variables de entorno — nunca subir
+.env
+
+# Cotizaciones generadas
+cotizaciones/
+
+# Logs de conversaciones
+logs/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Claude internos
+.claude/
+.agents/
+skills-lock.json

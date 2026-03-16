@@ -15,7 +15,7 @@ from tarifas import (
 class ResultadoCotizacion:
     precio_particular: int
     precio_final: int
-    nivel: str                    # "particular" | "corporativo" | "urgente"
+    nivel: str                    # "particular" | "corporativo" | "ultima_hora"
     desglose: list                # [{"concepto": str, "valor": str}] — listo para PDF
     recargos_aplicados: list      # ["Recargo nocturno +10%", ...]
     notas: Optional[str]

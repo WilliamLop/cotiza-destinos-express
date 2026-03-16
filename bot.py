@@ -107,7 +107,7 @@ Si la hay, responde SOLO con el bloque [PARAMS]. Si no, responde SOLO con: NO_PA
   "tipo_servicio": "ruta_sencilla" | "ida_vuelta" | "aeropuerto" | "urbano_km" | "por_horas" | "multi_dia",
   "destino": "nombre_sin_tildes_guion_bajo",
   "vehiculo_clave": "camioneta" | "van_ejecutiva" | "van_grande" | "bus",
-  "nivel_comercial": "particular" | "corporativo" | "urgente",
+  "nivel_comercial": "particular" | "corporativo" | "ultima_hora",
   "km": null,
   "horas": null,
   "dias": null,
@@ -121,10 +121,10 @@ Si la hay, responde SOLO con el bloque [PARAMS]. Si no, responde SOLO con: NO_PA
 Reglas:
 - vehiculo_clave: camioneta (1-4 pax), van_ejecutiva (5-10 pax), van_grande (11-16 pax), bus (17-40 pax)
 - destino: minúsculas sin tildes, espacios→guion_bajo (ej: "villa_de_leyva", "tunja", "chia")
-- nocturno: true SOLO si hora entre 22:00 y 05:00
+- nocturno: true SOLO si hora entre 19:00 y 07:00
 - festivo: true SOLO si es domingo o festivo oficial colombiano (NO sábados, NO fines de semana regulares)
 - zona_aeropuerto: solo si tipo_servicio="aeropuerto" (ej: "Calle 127", "Guaymaral", "Compartir")
-- nivel_comercial: "corporativo" si menciona empresa/cliente corporativo, "urgente" si es mismo día o muy urgente, "particular" por defecto
+- nivel_comercial: "corporativo" si menciona empresa/cliente corporativo, "ultima_hora" si es mismo día o muy urgente, "particular" por defecto
 - tipo_servicio "ida_vuelta" si explícitamente menciona ir y regresar el mismo día
 """.strip()
 

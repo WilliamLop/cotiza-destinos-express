@@ -32,6 +32,18 @@ GRIS_TEXT  = colors.HexColor('#555555')
 
 PAGE_W, PAGE_H = A4
 FONTS_DIR = os.path.join(os.path.dirname(__file__), 'fonts')
+ICONS_DIR = os.path.join(os.path.dirname(__file__), 'icons')
+
+
+def _icono(nombre: str, size: float):
+    """Carga un ícono PNG. Retorna Image o None si no existe."""
+    ruta = os.path.join(ICONS_DIR, f'{nombre}.png')
+    if os.path.exists(ruta):
+        try:
+            return Image(ruta, width=size, height=size)
+        except Exception:
+            pass
+    return None
 
 # ─── REGISTRO DE FUENTES ──────────────────────────────────────────────────────
 def registrar_fuentes():
@@ -211,6 +223,25 @@ def bloque_servicio(ES, datos):
     dist     = datos.get('distancia_km')
     dist_txt = f"{dist} km aprox." if dist else "A confirmar"
 
+    def _etiq(texto, icono_nombre, ancho_col):
+        """Etiqueta con ícono a la izquierda, centrado verticalmente."""
+        ico = _icono(icono_nombre, 0.34*cm)
+        if ico is None:
+            return Paragraph(texto, ES['etiqueta'])
+        t = Table([[ico, Paragraph(texto, ES['etiqueta'])]],
+                  colWidths=[0.44*cm, ancho_col - 0.44*cm],
+                  rowHeights=[0.42*cm])
+        t.setStyle(TableStyle([
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN',         (0, 0), (0,  0),  'CENTER'),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING',  (0, 0), (0,   0), 4),
+            ('RIGHTPADDING',  (1, 0), (1,   0), 0),
+            ('TOPPADDING',    (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        return t
+
     est_or = E('or', fontName=F['titulo'], fontSize=13, textColor=NEGRO)
     est_ds = E('de', fontName=F['titulo'], fontSize=13, textColor=NEGRO, alignment=TA_RIGHT)
     est_fl = E('fl', fontName=F['titulo'], fontSize=18, textColor=DORADO, alignment=TA_CENTER)
@@ -227,18 +258,18 @@ def bloque_servicio(ES, datos):
     ]))
 
     detalles = Table([
-        [Paragraph("Fecha del servicio",    ES['etiqueta']),
-         Paragraph("Hora de salida",        ES['etiqueta']),
-         Paragraph("Pasajeros",             ES['etiqueta']),
-         Paragraph("Distancia",             ES['etiqueta'])],
+        [_etiq("Fecha del servicio",   "fecha",      4.8*cm),
+         _etiq("Hora de salida",       "hora",       4.0*cm),
+         _etiq("Pasajeros",            "pasajeros",  4.5*cm),
+         _etiq("Distancia",            "distancia",  4.7*cm)],
         [Paragraph(fecha,    ES['campo']),
          Paragraph(hora,     ES['campo']),
          Paragraph(pax,      ES['campo']),
          Paragraph(dist_txt, ES['campo'])],
-        [Paragraph("Vehiculo recomendado",  ES['etiqueta']),
-         Paragraph("Capacidad",             ES['etiqueta']),
-         Paragraph("Tipo de servicio",      ES['etiqueta']),
-         Paragraph("",                      ES['etiqueta'])],
+        [_etiq("Vehiculo recomendado", "vehiculo",   4.8*cm),
+         _etiq("Capacidad",            "pasajeros",  4.0*cm),
+         _etiq("Tipo de servicio",     "detalles",   4.5*cm),
+         Paragraph("",                 ES['etiqueta'])],
         [Paragraph(vehiculo, ES['highlight']),
          Paragraph(cap,      ES['campo']),
          Paragraph(tipo,     ES['campo']),
@@ -293,18 +324,23 @@ def bloque_precio(ES, total, recargos):
     est_sub = E('inc_sub', fontName=F['cuerpo'],      fontSize=6.5, textColor=colors.HexColor('#999999'), leading=9, alignment=TA_CENTER)
 
     items = [
-        ("CONDUCTOR",   "profesional certificado"),
-        ("COMBUSTIBLE", "incluido en tarifa"),
-        ("PEAJES",      "todos incluidos"),
-        ("SEGURO",      "póliza incluida"),
+        ("CONDUCTOR",   "profesional certificado", "conductor"),
+        ("COMBUSTIBLE", "incluido en tarifa",       "combustible"),
+        ("PEAJES",      "todos incluidos",           "peajes"),
+        ("SEGURO",      "póliza incluida",           "seguridad"),
     ]
     col_w = 18 * cm / 4
 
-    def _card(titulo, sub):
-        t = Table([
+    def _card(titulo, sub, icono_nombre=None):
+        filas = []
+        ico = _icono(icono_nombre, 0.65*cm) if icono_nombre else None
+        if ico:
+            filas.append([ico])
+        filas += [
             [Paragraph(titulo, est_tit)],
             [Paragraph(sub,   est_sub)],
-        ], colWidths=[col_w - 0.4*cm])
+        ]
+        t = Table(filas, colWidths=[col_w - 0.4*cm])
         t.setStyle(TableStyle([
             ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
@@ -398,7 +434,20 @@ def bloque_galeria_vehiculo(ES, vehiculo_clave):
 
 
 def bloque_pagos(ES):
-    titulo = Paragraph("MÉTODOS DE PAGO DISPONIBLES", ES['seccion'])
+    ico = _icono("metodos-pagos", 0.45*cm)
+    if ico:
+        t_tit = Table([[ico, Paragraph("MÉTODOS DE PAGO DISPONIBLES", ES['seccion'])]],
+                      colWidths=[0.6*cm, 17*cm])
+        t_tit.setStyle(TableStyle([
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 0),
+            ('TOPPADDING',    (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        titulo = t_tit
+    else:
+        titulo = Paragraph("MÉTODOS DE PAGO DISPONIBLES", ES['seccion'])
     data = [[
         Paragraph("<b>Facturación Empresarial</b><br/>Pago a 30 días<br/>Corte mensual 1–30",   ES['cuerpo']),
         Paragraph("<b>Pago Inmediato</b><br/>Transferencia bancaria<br/>Nequi · Daviplata",     ES['cuerpo']),
@@ -473,10 +522,28 @@ def bloque_certificaciones(ES):
 
 def bloque_contacto(ES):
     titulo = Paragraph("PARA CONFIRMAR SU RESERVA", ES['seccion'])
+
+    def _celda_contacto(icono_nombre, texto):
+        ico = _icono(icono_nombre, 0.5*cm)
+        filas = []
+        if ico:
+            filas.append([ico])
+        filas.append([Paragraph(texto, ES['cuerpo'])])
+        t = Table(filas, colWidths=[5.5*cm])
+        t.setStyle(TableStyle([
+            ('ALIGN',         (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 0),
+            ('TOPPADDING',    (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ]))
+        return t
+
     data = [[
-        Paragraph("<b>WhatsApp / Llamadas</b><br/>+57 302 4060101",                ES['cuerpo']),
-        Paragraph("<b>Correo electrónico</b><br/>comercial@destinosexpress.com",   ES['cuerpo']),
-        Paragraph("<b>Página web</b><br/>www.destinosexpress.com",                 ES['cuerpo']),
+        _celda_contacto("whatsapp", "<b>WhatsApp / Llamadas</b><br/>+57 302 4060101"),
+        _celda_contacto("mail",     "<b>Correo electrónico</b><br/>comercial@destinosexpress.com"),
+        _celda_contacto("web",      "<b>Página web</b><br/>www.destinosexpress.com"),
     ]]
     t = Table(data, colWidths=[6*cm, 6*cm, 6*cm])
     t.setStyle(TableStyle([

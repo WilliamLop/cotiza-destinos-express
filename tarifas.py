@@ -21,13 +21,13 @@ TARIFAS = {
 
 # 2. MODELO COMERCIAL — 3 niveles de precio
 MODELO_COMERCIAL = {
-    "corporativo": 0.08,   # Particular + 8%
-    "urgente": 0.15,       # Particular + 15%
+    "corporativo":  0.08,   # Particular + 8%
+    "ultima_hora":  0.15,   # Particular + 15%
 }
 
 # 3. RECARGOS operativos
 RECARGOS = {
-    "nocturno": 0.10,     # 10% entre 10pm - 5am
+    "nocturno": 0.15,     # 15% entre 19:00 - 7:00 — aplica a todos los servicios
     "festivo": 0.10,      # 10% en festivos
     "rural_min": 0.10,    # 10% mínimo en zonas rurales
     "rural_max": 0.20,    # 20% máximo en zonas rurales
@@ -78,6 +78,8 @@ RUTAS = {
         "el_rosal": 135_000,
         # Sabana Sur
         "sibate": 175_000,
+        "guasca": 210_000,
+        "la_calera": 165_000,
         "fusagasuga": 320_000,
         "silvania": 275_000,
         # Corredor Tolima
@@ -122,8 +124,9 @@ RUTAS_IDA_VUELTA = {
         "soacha_san_mateo": 410_000,
         "soacha_compartir": 420_000,
         "sibate": 480_000,
+        "guasca": 480_000,
         "silvania": 495_000,
-        "fusagasuga": 540_000,
+        "fusagasuga": 576_000,
         "melgar": 560_000,
         "girardot": 590_000,
         "espinal": 630_000,
@@ -191,15 +194,15 @@ def precio_corporativo(particular):
     return round(particular * 1.08)
 
 
-def precio_urgente(particular):
-    """Precio particular + 15% para servicios urgentes."""
+def precio_ultima_hora(particular):
+    """Precio particular + 15% para servicios de última hora."""
     return round(particular * 1.15)
 
 
 def precio_con_nivel(particular, nivel="particular"):
-    """Devuelve el precio según el nivel comercial: particular, corporativo o urgente."""
+    """Devuelve el precio según el nivel comercial: particular, corporativo o ultima_hora."""
     if nivel == "corporativo":
         return precio_corporativo(particular)
-    if nivel == "urgente":
-        return precio_urgente(particular)
+    if nivel == "ultima_hora":
+        return precio_ultima_hora(particular)
     return particular

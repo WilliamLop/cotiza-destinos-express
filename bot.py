@@ -79,10 +79,12 @@ def construir_info_vehiculos():
     texto += "Para otros destinos el sistema estima con variables operativas.\n"
 
     texto += "\n=== AEROPUERTO EL DORADO ===\n"
-    texto += "Zonas Sur: Primera de Mayo, Ciudad Bolívar, San Cristóbal Sur, Usme\n"
-    texto += "Zonas Soacha: Soacha Centro, San Mateo, Compartir\n"
-    texto += "Zonas Centro: Centro hasta Cll 80, Cra 1\n"
-    texto += "Zonas Norte: Calle 90, Calle 127, Cll 153, Cll 170, Cll 200, Guaymaral\n"
+    texto += "Zonas hoteleras (tarifas fijas diurno/nocturno/corporativo):\n"
+    texto += "  Calle 26 / Salitre / Modelia, Chapinero / Quinta Paredes, Zona T / Parque 93\n"
+    texto += "  Calle 100, Usaquén, Cedritos / Colina, Suba, Chía, Tocancipá\n"
+    texto += "Zonas sur/soacha (tarifas base): Primera de Mayo, Ciudad Bolívar, San Cristóbal Sur, Usme\n"
+    texto += "  Soacha Centro, San Mateo, Compartir\n"
+    texto += "Zonas centro/norte (tarifas base): Centro hasta Cll 80, Cra 1, Calle 90, Calle 127, Cll 153, Cll 170, Cll 200, Guaymaral\n"
 
     texto += "\n=== FISCAL ===\n"
     texto += f"IVA: exento. Retención en la fuente: {FISCAL['retefuente']*100:.1f}%\n"

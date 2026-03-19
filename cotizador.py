@@ -6,7 +6,8 @@ Python calcula exactamente; Claude solo extrae parámetros.
 from dataclasses import dataclass
 from typing import Optional
 from tarifas import (
-    TARIFAS, RECARGOS, AEROPUERTO_BOGOTA, RUTAS, RUTAS_IDA_VUELTA,
+    TARIFAS, RECARGOS, AEROPUERTO_BOGOTA, AEROPUERTO_EL_DORADO_HOTELES,
+    RUTAS, RUTAS_IDA_VUELTA,
     SERVICIOS_MULTI_DIA, VARIABLES_OPERATIVAS, formatear_precio, precio_con_nivel,
 )
 
@@ -140,11 +141,55 @@ def calcular_ruta_ida_vuelta(destino: str, vehiculo: str, nivel: str,
     )
 
 
+def _calcular_aeropuerto_hotel(zona_encontrada, datos_zona, nivel, nocturno, festivo):
+    """Usa precios fijos del tarifario — nocturno y corporativo ya incluidos en tabla."""
+    prefijo = "nocturno" if nocturno else "diurno"
+    particular = datos_zona[f"{prefijo}_particular"]
+
+    if nivel == "corporativo":
+        precio_base = datos_zona[f"{prefijo}_corporativo"]
+        desglose = [{"concepto": f"Traslado aeropuerto — {zona_encontrada} ({prefijo}, corporativo)", "valor": formatear_precio(precio_base)}]
+    elif nivel == "ultima_hora":
+        precio_base = round(particular * 1.15)
+        desglose = [
+            {"concepto": f"Traslado aeropuerto — {zona_encontrada} ({prefijo})", "valor": formatear_precio(particular)},
+            {"concepto": "Recargo última hora +15%", "valor": formatear_precio(precio_base - particular)},
+        ]
+    else:
+        precio_base = particular
+        desglose = [{"concepto": f"Traslado aeropuerto — {zona_encontrada} ({prefijo})", "valor": formatear_precio(precio_base)}]
+
+    recargos_aplicados = []
+    if festivo:
+        nuevo = round(precio_base * 1.10)
+        desglose.append({"concepto": "Recargo festivo +10%", "valor": formatear_precio(nuevo - precio_base)})
+        recargos_aplicados.append("Recargo festivo +10%")
+        precio_base = nuevo
+
+    desglose.append({"concepto": "Total", "valor": formatear_precio(precio_base)})
+    return ResultadoCotizacion(
+        precio_particular=particular,
+        precio_final=precio_base,
+        nivel=nivel,
+        desglose=desglose,
+        recargos_aplicados=recargos_aplicados,
+        notas=None,
+        tipo_servicio="aeropuerto",
+    )
+
+
 def calcular_aeropuerto(zona: str, vehiculo: str, nivel: str,
                          nocturno: bool, festivo: bool) -> Optional[ResultadoCotizacion]:
-    zonas_vehiculo = AEROPUERTO_BOGOTA.get(vehiculo, {})
-    # Busca la zona por normalización
     zona_norm = normalizar_destino(zona)
+
+    # 1. Buscar en tabla de hoteles (precios fijos por horario y nivel)
+    hoteles_vehiculo = AEROPUERTO_EL_DORADO_HOTELES.get(vehiculo, {})
+    for z, datos in hoteles_vehiculo.items():
+        if normalizar_destino(z) == zona_norm or zona_norm in normalizar_destino(z):
+            return _calcular_aeropuerto_hotel(z, datos, nivel, nocturno, festivo)
+
+    # 2. Fallback: tabla antigua con precio base + fórmulas
+    zonas_vehiculo = AEROPUERTO_BOGOTA.get(vehiculo, {})
     zona_encontrada = None
     for z in zonas_vehiculo:
         if normalizar_destino(z) == zona_norm or zona_norm in normalizar_destino(z):

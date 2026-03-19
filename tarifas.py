@@ -54,7 +54,49 @@ AEROPUERTO_BOGOTA = {
     }
 }
 
-# 5. CONDUCTOR BILINGÜE — pendiente de confirmar con gerente
+# 5. AEROPUERTO EL DORADO → HOTELES BOGOTÁ — tarifas fijas (diurno/nocturno × particular/corporativo)
+AEROPUERTO_EL_DORADO_HOTELES = {
+    "camioneta": {
+        "Calle 26 / Salitre / Modelia": {
+            "diurno_particular": 34_000, "diurno_corporativo": 36_000,
+            "nocturno_particular": 39_000, "nocturno_corporativo": 41_000,
+        },
+        "Chapinero / Quinta Paredes": {
+            "diurno_particular": 60_000, "diurno_corporativo": 63_000,
+            "nocturno_particular": 69_000, "nocturno_corporativo": 72_000,
+        },
+        "Zona T / Parque 93": {
+            "diurno_particular": 64_000, "diurno_corporativo": 67_000,
+            "nocturno_particular": 74_000, "nocturno_corporativo": 77_000,
+        },
+        "Calle 100": {
+            "diurno_particular": 64_000, "diurno_corporativo": 67_000,
+            "nocturno_particular": 74_000, "nocturno_corporativo": 77_000,
+        },
+        "Usaquén": {
+            "diurno_particular": 68_000, "diurno_corporativo": 71_000,
+            "nocturno_particular": 78_000, "nocturno_corporativo": 82_000,
+        },
+        "Cedritos / Colina": {
+            "diurno_particular": 72_000, "diurno_corporativo": 75_000,
+            "nocturno_particular": 83_000, "nocturno_corporativo": 87_000,
+        },
+        "Suba": {
+            "diurno_particular": 75_000, "diurno_corporativo": 79_000,
+            "nocturno_particular": 86_000, "nocturno_corporativo": 91_000,
+        },
+        "Chía": {
+            "diurno_particular": 125_000, "diurno_corporativo": 131_000,
+            "nocturno_particular": 144_000, "nocturno_corporativo": 151_000,
+        },
+        "Tocancipá": {
+            "diurno_particular": 165_000, "diurno_corporativo": 173_000,
+            "nocturno_particular": 190_000, "nocturno_corporativo": 199_000,
+        },
+    }
+}
+
+# 6b. CONDUCTOR BILINGÜE — pendiente de confirmar con gerente
 CONDUCTOR_BILINGUE = {
     "anticipacion_horas": 72,
     "costo_por_hora": 95_000,

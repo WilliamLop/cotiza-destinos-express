@@ -6,10 +6,11 @@ Python calcula exactamente; Claude solo extrae parámetros.
 from dataclasses import dataclass
 from typing import Optional
 from tarifas import (
-    TARIFAS, RECARGOS, AEROPUERTO_BOGOTA, AEROPUERTO_EL_DORADO_HOTELES,
+    TARIFAS, TARIFAS_ZONA, RECARGOS, AEROPUERTO_BOGOTA, AEROPUERTO_EL_DORADO_HOTELES,
     RUTAS, RUTAS_IDA_VUELTA,
     SERVICIOS_MULTI_DIA, VARIABLES_OPERATIVAS, formatear_precio, precio_con_nivel,
 )
+from maps import consultar_ruta
 
 
 @dataclass
@@ -56,7 +57,7 @@ def _aplicar_recargos(precio_base: int, nocturno: bool, festivo: bool, rural: bo
 
     if nocturno:
         nuevo = round(precio * (1 + RECARGOS["nocturno"]))
-        recargos.append(("Recargo nocturno +10%", nuevo - precio))
+        recargos.append(("Recargo nocturno +15%", nuevo - precio))
         precio = nuevo
 
     if festivo:
@@ -73,6 +74,76 @@ def _aplicar_recargos(precio_base: int, nocturno: bool, festivo: bool, rural: bo
     return precio, recargos
 
 
+def calcular_por_zona(origen: str, destino: str, vehiculo: str, nivel: str,
+                       nocturno: bool, festivo: bool) -> Optional["ResultadoCotizacion"]:
+    """
+    Usa Google Maps para obtener km reales y municipio, detecta la zona
+    y aplica la fórmula correspondiente (urbana o metropolitana).
+    Para zona intermunicipal delega a la tabla RUTAS.
+    """
+    ruta = consultar_ruta(origen, destino)
+    if ruta is None:
+        return None
+
+    km      = ruta["km"]
+    minutos = ruta["duracion_min"]
+    zona    = ruta["zona"]
+    rural   = ruta["es_rural"]
+    municipio = ruta["municipio_destino"]
+
+    tarifas_vehiculo = TARIFAS_ZONA.get(zona, {}).get(vehiculo)
+
+    if zona in ("urbana", "metropolitana") and tarifas_vehiculo:
+        tarifa_km = tarifas_vehiculo["km_diurno"]
+        base      = tarifas_vehiculo["base"]
+        TARIFA_MIN = tarifas_vehiculo["min"]
+
+        costo_km  = round(km * tarifa_km)
+        costo_min = round(minutos * TARIFA_MIN)
+        precio_base = base + costo_km + costo_min
+
+        concepto = (
+            f"Traslado {'urbano Bogotá' if zona == 'urbana' else municipio} — "
+            f"{km:.1f} km · {minutos} min"
+        )
+        desglose_extra = [
+            {"concepto": f"Base", "valor": formatear_precio(base)} if base > 0 else None,
+            {"concepto": f"Recorrido {km:.1f} km × ${tarifa_km:,}", "valor": formatear_precio(costo_km)},
+            {"concepto": f"Tiempo {minutos} min × $300", "valor": formatear_precio(costo_min)},
+        ]
+        desglose_extra = [d for d in desglose_extra if d]  # quitar None
+
+        # Construir resultado manual para mostrar desglose detallado
+        precio_con_recargos, recargos_con_monto = _aplicar_recargos(
+            precio_base, nocturno, festivo, rural
+        )
+        if nivel == "corporativo":
+            precio_final = round(precio_con_recargos * 1.08)
+        else:
+            precio_final = precio_con_recargos
+
+        desglose = [{"concepto": concepto, "valor": ""}] + desglose_extra
+        for desc, monto in recargos_con_monto:
+            desglose.append({"concepto": desc, "valor": formatear_precio(monto)})
+        if nivel == "corporativo":
+            desglose.append({"concepto": "Tarifa corporativo +8%",
+                             "valor": formatear_precio(precio_final - precio_con_recargos)})
+        desglose.append({"concepto": "Total", "valor": formatear_precio(precio_final)})
+
+        return ResultadoCotizacion(
+            precio_particular=precio_base,
+            precio_final=precio_final,
+            nivel=nivel,
+            desglose=desglose,
+            recargos_aplicados=[d for d, _ in recargos_con_monto],
+            notas=f"Google Maps: {km:.1f} km reales · {minutos} min estimados",
+            tipo_servicio="urbano_km" if zona == "urbana" else "metropolitana",
+        )
+
+    # Zona intermunicipal o destino no reconocido: fallback a variables operativas
+    return calcular_destino_no_cargado(km, vehiculo, nivel, nocturno, festivo, rural)
+
+
 def _construir_resultado(
     precio_base_particular: int,
     nivel: str,
@@ -84,27 +155,47 @@ def _construir_resultado(
     notas: str = None,
 ) -> ResultadoCotizacion:
     """Factory compartida por todas las funciones de cálculo."""
-    precio_nivel = precio_con_nivel(precio_base_particular, nivel)
-    precio_final, recargos_con_monto = _aplicar_recargos(precio_nivel, nocturno, festivo, rural)
+    # Nocturno y festivo aplican primero; corporativo se suma encima
+    precio_con_recargos, recargos_con_monto = _aplicar_recargos(
+        precio_base_particular, nocturno, festivo, rural
+    )
+    # Corporativo: +8% sobre el subtotal (ya con recargos nocturnos/festivos)
+    if nivel == "corporativo":
+        precio_final = round(precio_con_recargos * 1.08)
+    else:
+        precio_final = precio_con_recargos
 
     desglose = [{"concepto": concepto_base, "valor": formatear_precio(precio_base_particular)}]
 
-    if nivel != "particular":
-        pct = 8 if nivel == "corporativo" else 15
-        diferencia = precio_nivel - precio_base_particular
+    if nivel != "particular" and nivel != "ultima_hora":
+        diferencia = precio_final - precio_con_recargos
+        desglose_temp = []
+        for descripcion, monto in recargos_con_monto:
+            desglose_temp.append({"concepto": descripcion, "valor": formatear_precio(monto)})
+        desglose += desglose_temp
         desglose.append({
-            "concepto": f"Tarifa {nivel} +{pct}%",
+            "concepto": "Tarifa corporativo +8%",
             "valor": formatear_precio(diferencia),
         })
+        desglose.append({"concepto": "Total", "valor": formatear_precio(precio_final)})
+        return ResultadoCotizacion(
+            precio_particular=precio_base_particular,
+            precio_final=precio_final,
+            nivel=nivel,
+            desglose=desglose,
+            recargos_aplicados=[d for d, _ in recargos_con_monto],
+            notas=notas,
+            tipo_servicio=tipo_servicio,
+        )
 
     for descripcion, monto in recargos_con_monto:
         desglose.append({"concepto": descripcion, "valor": formatear_precio(monto)})
 
-    desglose.append({"concepto": "Total", "valor": formatear_precio(precio_final)})
+    desglose.append({"concepto": "Total", "valor": formatear_precio(precio_con_recargos)})
 
     return ResultadoCotizacion(
         precio_particular=precio_base_particular,
-        precio_final=precio_final,
+        precio_final=precio_con_recargos,
         nivel=nivel,
         desglose=desglose,
         recargos_aplicados=[d for d, _ in recargos_con_monto],
@@ -317,6 +408,7 @@ def cotizar(params: dict) -> Optional[ResultadoCotizacion]:
     vehiculo = params.get("vehiculo_clave", "camioneta")
     nivel    = params.get("nivel_comercial", "particular")
     destino  = params.get("destino", "")
+    origen   = params.get("origen", "Bogota")
     nocturno = bool(params.get("nocturno", False))
     festivo  = bool(params.get("festivo", False))
     rural    = bool(params.get("rural", False))
@@ -327,12 +419,17 @@ def cotizar(params: dict) -> Optional[ResultadoCotizacion]:
 
     if tipo == "ruta_sencilla":
         resultado = calcular_ruta_sencilla(destino, vehiculo, nivel, nocturno, festivo, rural)
+        if resultado is None:
+            # Intentar con Google Maps (zona metropolitana o destino fuera de tabla)
+            resultado = calcular_por_zona(origen, destino, vehiculo, nivel, nocturno, festivo)
         if resultado is None and km:
             resultado = calcular_destino_no_cargado(km, vehiculo, nivel, nocturno, festivo, rural)
         return resultado
 
     if tipo == "ida_vuelta":
         resultado = calcular_ruta_ida_vuelta(destino, vehiculo, nivel, nocturno, festivo, rural)
+        if resultado is None:
+            resultado = calcular_por_zona(origen, destino, vehiculo, nivel, nocturno, festivo)
         if resultado is None and km:
             resultado = calcular_destino_no_cargado(km, vehiculo, nivel, nocturno, festivo, rural)
         return resultado
@@ -341,6 +438,11 @@ def cotizar(params: dict) -> Optional[ResultadoCotizacion]:
         return calcular_aeropuerto(zona or destino, vehiculo, nivel, nocturno, festivo)
 
     if tipo == "urbano_km":
+        # Prioridad: Google Maps con origen+destino reales
+        if origen and destino:
+            resultado = calcular_por_zona(origen, destino, vehiculo, nivel, nocturno, festivo)
+            if resultado:
+                return resultado
         if km:
             return calcular_urbano_km(km, vehiculo, nivel, nocturno, festivo)
         return None

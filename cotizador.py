@@ -295,6 +295,49 @@ def calcular_aeropuerto(zona: str, vehiculo: str, nivel: str,
     )
 
 
+def _calcular_urbano_formula(km: float, vehiculo: str, nivel: str,
+                              nocturno: bool, festivo: bool) -> Optional[ResultadoCotizacion]:
+    """
+    Fórmula urbana con TARIFAS_ZONA: base + km×4600 + min×300.
+    Usada como fallback cuando Maps no está disponible.
+    Asume ~3 min/km en Bogotá para la estimación de minutos.
+    """
+    tz = TARIFAS_ZONA.get("urbana", {}).get(vehiculo)
+    if not tz:
+        return None
+    minutos_est = round(km * 3)
+    base      = tz["base"]
+    costo_km  = round(km * tz["km_diurno"])
+    costo_min = round(minutos_est * tz["min"])
+    precio_base = base + costo_km + costo_min
+
+    precio_con_recargos, recargos_con_monto = _aplicar_recargos(precio_base, nocturno, festivo, False)
+    precio_final = round(precio_con_recargos * 1.08) if nivel == "corporativo" else precio_con_recargos
+
+    desglose = [
+        {"concepto": f"Traslado urbano Bogotá — {km:.0f} km aprox. · {minutos_est} min est.", "valor": ""},
+        {"concepto": f"Base", "valor": formatear_precio(base)},
+        {"concepto": f"Recorrido {km:.0f} km × $4.600", "valor": formatear_precio(costo_km)},
+        {"concepto": f"Tiempo {minutos_est} min × $300", "valor": formatear_precio(costo_min)},
+    ]
+    for desc, monto in recargos_con_monto:
+        desglose.append({"concepto": desc, "valor": formatear_precio(monto)})
+    if nivel == "corporativo":
+        desglose.append({"concepto": "Tarifa corporativo +8%",
+                         "valor": formatear_precio(precio_final - precio_con_recargos)})
+    desglose.append({"concepto": "Total", "valor": formatear_precio(precio_final)})
+
+    return ResultadoCotizacion(
+        precio_particular=precio_base,
+        precio_final=precio_final,
+        nivel=nivel,
+        desglose=desglose,
+        recargos_aplicados=[d for d, _ in recargos_con_monto],
+        notas="Distancia estimada — sin confirmación Google Maps",
+        tipo_servicio="urbano_km",
+    )
+
+
 def calcular_urbano_km(km: float, vehiculo: str, nivel: str,
                         nocturno: bool, festivo: bool) -> Optional[ResultadoCotizacion]:
     t = TARIFAS.get(vehiculo)
@@ -443,9 +486,9 @@ def cotizar(params: dict) -> Optional[ResultadoCotizacion]:
             resultado = calcular_por_zona(origen, destino, vehiculo, nivel, nocturno, festivo)
             if resultado:
                 return resultado
-        if km:
-            return calcular_urbano_km(km, vehiculo, nivel, nocturno, festivo)
-        return None
+        # Fallback: Maps falló — usar fórmula urbana con km estimado
+        km_calc = float(km) if km else 12.0
+        return _calcular_urbano_formula(km_calc, vehiculo, nivel, nocturno, festivo)
 
     if tipo == "por_horas":
         if horas:

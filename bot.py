@@ -91,7 +91,7 @@ def construir_info_vehiculos():
     texto += f"Clientes con retención: {', '.join(FISCAL['clientes_con_retencion'])}\n"
 
     texto += "\n=== RECARGOS ===\n"
-    texto += "Horario nocturno (10pm–5am): +10%\n"
+    texto += "Horario nocturno (7pm–7am): +15% — cualquier hora entre 19:00 y 07:00 es nocturno\n"
     texto += "Festivos y domingos: +10%\n"
     texto += "Zona rural / vereda / carretera destapada: +10% a +20%\n"
 
@@ -124,7 +124,7 @@ Si la hay, responde SOLO con el bloque [PARAMS]. Si no, responde SOLO con: NO_PA
 Reglas:
 - vehiculo_clave: camioneta (1-4 pax), van_ejecutiva (5-10 pax), van_grande (11-16 pax), bus (17-40 pax)
 - destino: minúsculas sin tildes, espacios→guion_bajo (ej: "villa_de_leyva", "tunja", "chia")
-- nocturno: true SOLO si hora entre 19:00 y 07:00
+- nocturno: true si hora entre 19:00 y 07:00 (7pm a 7am). 12:30am, 1am, 5am, 6am = nocturno. NO preguntes si es AM o PM cuando está escrito claramente.
 - festivo: true SOLO si es domingo o festivo oficial colombiano (NO sábados, NO fines de semana regulares)
 - zona_aeropuerto: solo si tipo_servicio="aeropuerto" (ej: "Calle 127", "Guaymaral", "Compartir")
 - nivel_comercial: "corporativo" si menciona empresa/cliente corporativo, "ultima_hora" si es mismo día o muy urgente, "particular" por defecto

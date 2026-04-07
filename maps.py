@@ -115,10 +115,14 @@ def consultar_ruta(origen: str, destino: str) -> dict:
     try:
         gmaps = _get_client()
 
+        # Incluir ciudad de origen como contexto para ambas consultas
+        ciudad_origen = _extraer_ciudad(origen)
+        destino_con_ctx = f"{destino}, {ciudad_origen}, Colombia" if ciudad_origen else f"{destino}, Colombia"
+
         # ── Distancia real ──────────────────────────────────────────────────
         matriz = gmaps.distance_matrix(
             origins=[f"{origen}, Colombia"],
-            destinations=[f"{destino}, Colombia"],
+            destinations=[destino_con_ctx],
             mode="driving",
             language="es",
             units="metric",
@@ -127,16 +131,14 @@ def consultar_ruta(origen: str, destino: str) -> dict:
 
         elemento = matriz["rows"][0]["elements"][0]
         if elemento["status"] != "OK":
-            logging.warning(f"[Maps] Distance Matrix status: {elemento['status']}")
+            logging.warning(f"[Maps] Distance Matrix status: {elemento['status']} | {origen} → {destino_con_ctx}")
             return None
 
         km = round(elemento["distance"]["value"] / 1000, 1)
         duracion_min = round(elemento["duration"]["value"] / 60)
 
         # ── Municipio del destino ───────────────────────────────────────────
-        # Usar el origen como contexto para que la geocodificación sea más precisa
-        ciudad_origen = _extraer_ciudad(origen)
-        query_destino = f"{destino}, {ciudad_origen}, Colombia" if ciudad_origen else f"{destino}, Colombia"
+        query_destino = destino_con_ctx
         geo = gmaps.geocode(query_destino, language="es", region="co")
         municipio = "desconocido"
         es_rural = False
@@ -169,5 +171,5 @@ def consultar_ruta(origen: str, destino: str) -> dict:
         return resultado
 
     except Exception as e:
-        logging.error(f"[Maps] Error consultando ruta: {e}")
+        logging.error(f"[Maps] Error consultando ruta {origen} → {destino}: {type(e).__name__}: {e}")
         return None

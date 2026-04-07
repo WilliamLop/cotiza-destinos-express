@@ -294,11 +294,12 @@ def buscar_distancia_en_historial(historial: list):
     return None
 
 
-def construir_mensajes_claude(historial: list, resultado=None) -> list:
+def construir_mensajes_claude(historial: list, resultado=None, calculo_fallido: bool = False) -> list:
     """
     Toma el historial limpio y construye la lista de mensajes para Claude.
     Inyecta fecha, distancia y (opcionalmente) el precio calculado por Python
     en el ÚLTIMO mensaje del usuario, sin contaminar el historial guardado.
+    calculo_fallido=True cuando el extractor encontró parámetros pero cotizador retornó None.
     """
     fecha_hoy       = datetime.now().strftime("%A %d de %B del %Y, %H:%M horas")
     distancia_local = buscar_distancia_en_historial(historial)
@@ -306,6 +307,15 @@ def construir_mensajes_claude(historial: list, resultado=None) -> list:
     contexto = f"[CONTEXTO DEL SISTEMA]\nFecha y hora actual: {fecha_hoy}\n"
     if distancia_local:
         contexto += f"Distancia confirmada en tabla local: {distancia_local} km. No necesitas estimarla.\n"
+
+    if calculo_fallido:
+        # Maps falló o faltan datos — no dejar que Claude invente precios ni geografía
+        contexto += (
+            "\n[AVISO DEL SISTEMA] El módulo de cálculo automático no pudo determinar el precio. "
+            "NO uses tu conocimiento de geografía para estimar distancias ni precios. "
+            "Indica al cliente que necesitas la dirección exacta de origen y destino "
+            "para calcular la tarifa con precisión.\n"
+        )
 
     if resultado is not None:
         contexto += "\n[PRECIO_CALCULADO_POR_SISTEMA]\n"
@@ -360,9 +370,12 @@ async def procesar_cotizacion(historial: list) -> tuple:
     resultado = cotizar(params) if params else None
     if resultado:
         logging.info(f"Cotizador: {resultado.tipo_servicio} → {formatear_precio(resultado.precio_final)}")
+    elif params:
+        logging.warning(f"Cotizador: no pudo calcular para params={params}")
 
     # ── Paso 3: Claude genera respuesta con precio inyectado ──
-    mensajes_con_precio = construir_mensajes_claude(historial, resultado)
+    calculo_fallido = params is not None and resultado is None
+    mensajes_con_precio = construir_mensajes_claude(historial, resultado, calculo_fallido)
     respuesta_completa = ""
 
     with cliente_claude.messages.stream(

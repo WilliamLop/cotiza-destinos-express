@@ -53,10 +53,11 @@ def _extraer_ciudad(origen: str) -> str:
     """
     Extrae la ciudad principal del texto de origen para usarla como contexto
     al geocodificar el destino.
+    Cuando no se detecta otra ciudad, retorna "Bogotá" como default porque
+    Destinos Express opera desde Bogotá.
     """
     origen_lower = origen.lower()
     ciudades = [
-        ("bogot", "Bogotá"),
         ("medellin", "Medellín"), ("medellín", "Medellín"),
         ("cali", "Cali"),
         ("barranquilla", "Barranquilla"),
@@ -71,7 +72,8 @@ def _extraer_ciudad(origen: str) -> str:
     for clave, nombre in ciudades:
         if clave in origen_lower:
             return nombre
-    return ""
+    # Por defecto Bogotá — todos los servicios parten de la capital
+    return "Bogotá"
 
 
 def detectar_zona(municipio: str, km: float = 0) -> str:

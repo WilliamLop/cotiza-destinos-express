@@ -19,18 +19,39 @@ TARIFAS = {
     # van_ejecutiva, van_grande, bus → se derivan después con %
 }
 
-# 2. MODELO COMERCIAL — 3 niveles de precio
-MODELO_COMERCIAL = {
-    "corporativo":  0.08,   # Particular + 8%
-    "ultima_hora":  0.15,   # Particular + 15%
+# 1b. TARIFAS POR ZONA — fórmulas según ubicación del destino
+# Fórmula urbana/metropolitana: base + km × tarifa_km + min × tarifa_min
+TARIFAS_ZONA = {
+    # Dentro de Bogotá y área metropolitana: misma fórmula base + km + tiempo
+    "urbana": {
+        "camioneta": {
+            "base":       8_000,
+            "km_diurno":  4_600,
+            "min":          300,
+        },
+    },
+    "metropolitana": {
+        "camioneta": {
+            "base":       8_000,
+            "km_diurno":  4_600,
+            "min":          300,
+        },
+    },
+    # Intermunicipal: tabla fija RUTAS (no usa fórmula de km)
 }
+
+# 2. MODELO COMERCIAL — niveles de precio
+MODELO_COMERCIAL = {
+    "corporativo": 0.08,   # +8% sobre el total (diurno y nocturno)
+}
+# Nota: "ultima_hora" ya no tiene recargo de precio, es solo etiqueta de urgencia.
 
 # 3. RECARGOS operativos
 RECARGOS = {
-    "nocturno": 0.15,     # 15% entre 19:00 - 7:00 — aplica a todos los servicios
-    "festivo": 0.10,      # 10% en festivos
-    "rural_min": 0.10,    # 10% mínimo en zonas rurales
-    "rural_max": 0.20,    # 20% máximo en zonas rurales
+    "nocturno": 0.15,     # +15% al total — aplica a TODOS los clientes entre 7pm y 7am
+    "festivo":  0.10,     # +10% en festivos y domingos
+    "rural_min": 0.10,    # +10% mínimo en zonas rurales
+    "rural_max": 0.20,    # +20% máximo en zonas rurales
 }
 
 # 4. AEROPUERTO BOGOTÁ — por zona, precio particular

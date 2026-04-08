@@ -400,14 +400,23 @@ def bloque_galeria_vehiculo(ES, vehiculo_clave):
     if not fotos:
         return []
 
-    IMG_W = 5.5 * cm
-    IMG_H = 3.8 * cm
-    COL_W = 18 * cm / 3  # 6 cm cada columna
+    COL_W = 18 * cm / 3   # 6 cm por columna
+    MAX_W = 5.6 * cm      # ancho máximo dentro de la celda
+    MAX_H = 5.6 * cm      # alto máximo (limita fotos muy verticales)
 
     celdas = []
     for foto in fotos:
         try:
-            celdas.append(Image(foto, width=IMG_W, height=IMG_H))
+            from PIL import Image as PILImage
+            with PILImage.open(foto) as pil:
+                pw, ph = pil.size
+            ratio = pw / ph
+            img_w = MAX_W
+            img_h = MAX_W / ratio
+            if img_h > MAX_H:
+                img_h = MAX_H
+                img_w = MAX_H * ratio
+            celdas.append(Image(foto, width=img_w, height=img_h))
         except Exception:
             celdas.append(Paragraph("", ES['cuerpo']))
 

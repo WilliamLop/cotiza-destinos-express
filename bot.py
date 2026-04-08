@@ -187,12 +187,16 @@ Buenos días / tardes / noches, [saludo cordial de 1 línea].
 🔹 *Fecha:* [fecha]
 🔹 *Hora:* [hora]
 🔹 *Vehículo:* [nombre] · [capacidad]
-🔹 *Distancia aprox.:* [km] km  _(si aplica)_
+🔹 *Distancia:* [km] km · [min] min estimados  _(si aplica)_
 
 💰 *Valor del servicio:*
    *$[valor] COP*
 
-_[Nota si hay recargos aplicados]_
+📋 *Desglose interno:*
+[Copia EXACTAMENTE cada línea del [PRECIO_CALCULADO] en este formato:]
+   • [concepto]: [valor]
+   • [concepto]: [valor]
+   ...
 
 ✅ *Incluye:* conductor profesional, combustible, peajes y póliza de seguro.
 

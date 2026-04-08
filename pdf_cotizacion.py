@@ -475,6 +475,36 @@ def bloque_pagos(ES):
     return [titulo, t]
 
 
+def _desglose_cliente(desglose: list) -> list:
+    """
+    Versión simplificada para el cliente: oculta tarifas internas (base/km/min).
+    Muestra: descripción del servicio + subtotal, recargos si aplican, total.
+    """
+    if not desglose:
+        return desglose
+
+    def _parse(s):
+        try:
+            return int(str(s).replace('$', '').replace('.', '').strip())
+        except Exception:
+            return 0
+
+    recargos = [d for d in desglose if str(d.get('concepto', '')).startswith('Recargo')]
+    total_item = next((d for d in desglose if d.get('concepto', '') == 'Total'), None)
+    servicio = dict(desglose[0])  # primera línea = descripción del servicio
+
+    if total_item:
+        total_val = _parse(total_item['valor'])
+        recargos_sum = sum(_parse(r['valor']) for r in recargos)
+        subtotal = total_val - recargos_sum
+        servicio['valor'] = f"${subtotal:,}".replace(',', '.')
+
+    resultado = [servicio] + recargos
+    if total_item:
+        resultado.append(total_item)
+    return resultado
+
+
 def bloque_desglose(ES, desglose):
     if not desglose:
         return []
@@ -483,7 +513,7 @@ def bloque_desglose(ES, desglose):
         Paragraph("Concepto",    ES['tabla_h']),
         Paragraph("Valor (COP)", ES['tabla_hR']),
     ]]
-    for item in desglose:
+    for item in _desglose_cliente(desglose):
         filas.append([
             Paragraph(str(item.get('concepto', '')), ES['cuerpo']),
             Paragraph(str(item.get('valor',    '')), ES['tabla_vR']),

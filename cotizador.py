@@ -567,25 +567,23 @@ def calcular_ida_vuelta_con_espera(
 
     desglose = [
         {"concepto": f"Ida: Bogotá → {nombre_dest} ({km:.0f} km{sfx_ida})",
-         "valor": formatear_precio(precio_oneway)},
+         "valor": formatear_precio(precio_ida_base)},
     ]
     for desc, monto in recargos_ida:
-        desglose.append({"concepto": f"  {desc}", "valor": formatear_precio(monto)})
-    desglose.append({"concepto": "  Subtotal ida", "valor": formatear_precio(precio_ida_base)})
+        desglose.append({"concepto": desc, "valor": formatear_precio(monto)})
 
-    desglose.append({
-        "concepto": f"Disponibilidad en destino ({horas_espera:.0f} h × {formatear_precio(tarifa_hora)}/h)",
-        "valor": formatear_precio(precio_espera),
-    })
+    if horas_espera > 0:
+        desglose.append({
+            "concepto": f"Disponibilidad en destino ({horas_espera:.0f} h × {formatear_precio(tarifa_hora)}/h)",
+            "valor": formatear_precio(precio_espera),
+        })
 
     desglose.append({
         "concepto": f"Vuelta: {nombre_dest} → Bogotá ({km:.0f} km · diurno)",
-        "valor": formatear_precio(precio_oneway),
+        "valor": formatear_precio(precio_vuelta_base),
     })
     for desc, monto in recargos_vta:
-        desglose.append({"concepto": f"  {desc}", "valor": formatear_precio(monto)})
-    if recargos_vta:
-        desglose.append({"concepto": "  Subtotal vuelta", "valor": formatear_precio(precio_vuelta_base)})
+        desglose.append({"concepto": desc, "valor": formatear_precio(monto)})
 
     if nivel == "corporativo":
         desglose.append({"concepto": "Tarifa corporativo +8%",

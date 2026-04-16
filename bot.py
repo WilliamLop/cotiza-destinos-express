@@ -33,7 +33,7 @@ MAX_TURNOS        = 12   # Máximo de pares usuario/bot por conversación (~24 m
 # ──────────────────────────────────────────────────────────────────────────────
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
-cliente_claude = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+cliente_claude = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
 # ─── MEMORIA DE CONVERSACIONES (en RAM, por chat_id) ──────────────────────────
 # Formato: {chat_id: [{"role": "user"|"assistant", "content": "..."}]}
@@ -354,7 +354,7 @@ async def procesar_cotizacion(historial: list) -> tuple:
     mensajes = construir_mensajes_claude(historial)
 
     # ── Paso 1: extraer parámetros del servicio ──
-    resp_extraccion = cliente_claude.messages.create(
+    resp_extraccion = await cliente_claude.messages.create(
         model="claude-haiku-4-5",
         max_tokens=400,
         system=SISTEMA_EXTRACCION,
@@ -373,7 +373,7 @@ async def procesar_cotizacion(historial: list) -> tuple:
     mensajes_con_precio = construir_mensajes_claude(historial, resultado)
     respuesta_completa = ""
 
-    with cliente_claude.messages.stream(
+    async with cliente_claude.messages.stream(
         model="claude-haiku-4-5",
         max_tokens=1500,
         system=[{
@@ -383,7 +383,7 @@ async def procesar_cotizacion(historial: list) -> tuple:
         }],
         messages=mensajes_con_precio,
     ) as stream:
-        for texto in stream.text_stream:
+        async for texto in stream.text_stream:
             respuesta_completa += texto
 
     texto_final, datos_pdf = extraer_pdf_data(respuesta_completa)
@@ -466,10 +466,13 @@ async def manejar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     historiales[chat_id].append({"role": "assistant", "content": texto})
 
     # ── Limitar tamaño del historial (evita crecimiento infinito) ──
-    # Mantiene los últimos MAX_TURNOS pares de mensajes
     limite = MAX_TURNOS * 2
     if len(historiales[chat_id]) > limite:
-        historiales[chat_id] = historiales[chat_id][-limite:]
+        recortado = historiales[chat_id][-limite:]
+        # Garantizar que el primer mensaje sea del usuario (Anthropic lo requiere)
+        if recortado and recortado[0]["role"] != "user":
+            recortado = recortado[1:]
+        historiales[chat_id] = recortado
 
     # ── Enviar respuesta al cliente ──
     try:

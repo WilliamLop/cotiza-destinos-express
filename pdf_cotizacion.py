@@ -8,6 +8,7 @@ import io
 import os
 import json
 import glob as glob_module
+import fcntl
 from datetime import datetime, timedelta
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -111,22 +112,27 @@ def estilos():
 
 # ─── CONTADOR ─────────────────────────────────────────────────────────────────
 def numero_cotizacion():
+    """Genera un número correlativo único. Usa flock para evitar duplicados concurrentes."""
     archivo = os.path.join(os.path.dirname(__file__), 'contador.json')
     anio    = datetime.now().year
-    if os.path.exists(archivo):
-        with open(archivo) as f:
-            data = json.load(f)
-        data = {'anio': anio, 'n': 1} if data.get('anio') != anio else {**data, 'n': data['n'] + 1}
-    else:
-        data = {'anio': anio, 'n': 1}
-    with open(archivo, 'w') as f:
-        json.dump(data, f)
+    with open(archivo, 'a+') as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            f.seek(0)
+            contenido = f.read().strip()
+            data = json.loads(contenido) if contenido else {}
+            data = {'anio': anio, 'n': 1} if data.get('anio') != anio else {**data, 'n': data['n'] + 1}
+            f.seek(0)
+            f.truncate()
+            json.dump(data, f)
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
     return f"DX-{anio}-{data['n']:04d}"
 
 def cop(valor):
     try:
         return f"${int(valor):,}".replace(",", ".")
-    except:
+    except (ValueError, TypeError):
         return str(valor)
 
 # ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -477,8 +483,10 @@ def bloque_pagos(ES):
 
 def _desglose_cliente(desglose: list) -> list:
     """
-    Versión simplificada para el cliente: oculta tarifas internas (base/km/min).
-    Muestra: descripción del servicio + subtotal, recargos si aplican, total.
+    Versión simplificada para el cliente.
+    - Servicios simples (1 concepto principal): oculta tarifas internas de km/min,
+      muestra el subtotal antes de recargos + recargos + total.
+    - Servicios compuestos (ida+espera+vuelta): muestra cada pierna directamente.
     """
     if not desglose:
         return desglose
@@ -486,20 +494,34 @@ def _desglose_cliente(desglose: list) -> list:
     def _parse(s):
         try:
             return int(str(s).replace('$', '').replace('.', '').strip())
-        except Exception:
+        except (ValueError, TypeError):
             return 0
 
-    recargos = [d for d in desglose if str(d.get('concepto', '')).startswith('Recargo')]
-    total_item = next((d for d in desglose if d.get('concepto', '') == 'Total'), None)
-    servicio = dict(desglose[0])  # primera línea = descripción del servicio
+    total_item  = next((d for d in desglose if d.get('concepto') == 'Total'), None)
+    recargos    = [d for d in desglose if d.get('concepto', '').strip().startswith('Recargo')]
+    # Líneas internas que no se muestran al cliente (km, min, base)
+    internas    = {'Base', 'Recorrido', 'Tiempo'}
+    conceptos_principales = [
+        d for d in desglose
+        if d.get('concepto') != 'Total'
+        and not d.get('concepto', '').strip().startswith('Recargo')
+        and not any(d.get('concepto', '').startswith(p) for p in internas)
+        and d.get('valor')           # descarta líneas de título (valor vacío)
+    ]
 
-    if total_item:
-        total_val = _parse(total_item['valor'])
-        recargos_sum = sum(_parse(r['valor']) for r in recargos)
-        subtotal = total_val - recargos_sum
-        servicio['valor'] = f"${subtotal:,}".replace(',', '.')
+    if len(conceptos_principales) <= 1:
+        # Servicio simple: recalcular subtotal base (total − recargos)
+        servicio = dict(conceptos_principales[0]) if conceptos_principales else {}
+        if total_item and servicio:
+            total_val     = _parse(total_item['valor'])
+            recargos_sum  = sum(_parse(r['valor']) for r in recargos)
+            base          = total_val - recargos_sum
+            servicio['valor'] = f"${base:,}".replace(',', '.')
+        resultado = [servicio] + recargos
+    else:
+        # Servicio compuesto: mostrar todas las piernas directamente
+        resultado = conceptos_principales + recargos
 
-    resultado = [servicio] + recargos
     if total_item:
         resultado.append(total_item)
     return resultado

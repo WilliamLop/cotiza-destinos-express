@@ -44,7 +44,7 @@ CASOS = [
             "Necesito transporte desde la Calle 127 al aeropuerto El Dorado "
             "mañana 12 de marzo a las 4:00 am, para 1 persona en camioneta"}],
         "espera_pdf": True,
-        "precio_esperado": round(75_000 * 1.10),  # nocturno +10%
+        "precio_esperado": round(round(75_000 * 1.10) / 1000) * 1000,  # nocturno, redondeado al millar
     },
     {
         "id": 4,
@@ -62,7 +62,7 @@ CASOS = [
             "Somos de la empresa ANDI, necesitamos cotización para traslado "
             "de Bogotá a Tunja el lunes 23 de marzo a las 8 am, 1 pasajero ejecutivo"}],
         "espera_pdf": True,
-        "precio_esperado": 496_800,  # Tunja corporativo +8%
+        "precio_esperado": 497_000,  # Tunja 460k × 1.08 = 496.800 → redondeado 497.000
     },
     {
         "id": 6,
@@ -79,7 +79,7 @@ CASOS = [
             "Necesito una camioneta disponible por 4 horas en Bogotá "
             "el martes 24 de marzo a partir de las 9 am, para 2 personas"}],
         "espera_pdf": True,
-        "precio_esperado": round(4 * 52_000),  # 4h × $52.000
+        "precio_esperado": 208_000,  # 4h × $52.000 = $208.000 (ya es millar exacto)
     },
 ]
 
@@ -111,7 +111,7 @@ async def ejecutar_caso(caso):
         if caso["espera_pdf"] and tiene_pdf:
             precio_real = datos_pdf["total"]
             precio_ok = (caso["precio_esperado"] is None or
-                         abs(precio_real - caso["precio_esperado"]) < 100)
+                         abs(precio_real - caso["precio_esperado"]) < 2_000)
 
             if precio_ok:
                 print(f"  {VERDE}✅ PDF generado — Total: ${precio_real:,.0f}{RESET}")

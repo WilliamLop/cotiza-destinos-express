@@ -247,6 +247,71 @@ ZONA_METROPOLITANA_BOGOTA = [
 ]
 
 
+# Corredores de salida de Bogotá — para interpolación de destinos desconocidos
+# Lógica del gerente: precio = km_nuevo × (precio_ref / km_ref)
+# km_ref: distancia real Bogotá → referencia (fuente: tabla distancias.py)
+CORREDORES = {
+    "norte": {
+        "nombre": "Corredor Norte",
+        "via_label": "Autopista Norte / Carrera 7",
+        # Google Maps summary para rutas a Boyacá, Santander, Cundinamarca norte
+        "keywords_via": [
+            "autopista norte", "carrera 7", "via tunja", "ruta 55",
+            "boyaca", "boyacá", "cundinamarca", "tunja",
+        ],
+        "destinos_ref": [
+            "chia", "cajica", "zipaquira", "tocancipa",
+            "tunja", "paipa", "duitama", "sogamoso",
+            "villa_de_leyva", "chiquinquira",
+        ],
+        "referencia": "tunja",
+        "km_ref": 147,   # Bogotá → Tunja (distancias.py)
+    },
+    "sur": {
+        "nombre": "Corredor Sur",
+        "via_label": "Autopista Sur / Vía Bogotá–Girardot",
+        # Google Maps summary para rutas a Tolima, Cundinamarca sur
+        "keywords_via": [
+            "autopista sur", "autopista al sur", "bogota girardot",
+            "bogotá girardot", "via melgar", "via fusagasuga",
+            "via girardot", "girardot", "melgar", "tolima",
+        ],
+        "destinos_ref": [
+            "sibate", "fusagasuga", "silvania", "melgar",
+            "girardot", "espinal", "ibague",
+        ],
+        "referencia": "girardot",
+        "km_ref": 134,   # Bogotá → Girardot (distancias.py)
+    },
+    "occidente": {
+        "nombre": "Corredor Occidente",
+        "via_label": "Calle 80 / Autopista Medellín",
+        # Google Maps summary para rutas hacia el occidente de Cundinamarca
+        "keywords_via": [
+            "calle 80", "autopista medellin", "autopista medellín",
+            "via villeta", "via la vega", "la vega", "villeta",
+            "bogota medellin", "bogotá medellín",
+        ],
+        "destinos_ref": ["mosquera", "funza", "madrid", "facatativa", "el_rosal"],
+        "referencia": "facatativa",
+        "km_ref": 42,    # Bogotá → Facatativá (distancias.py)
+    },
+    "oriente": {
+        "nombre": "Corredor Oriente",
+        "via_label": "Vía al Llano / Autopista Llanos",
+        # Google Maps summary para rutas a Meta y Llanos
+        "keywords_via": [
+            "via al llano", "vía al llano", "autopista llanos",
+            "al llano", "villavicencio", "via villavicencio",
+            "restrepo", "meta",
+        ],
+        "destinos_ref": ["villavicencio", "restrepo", "cumaral"],
+        "referencia": "villavicencio",
+        "km_ref": 89,    # Bogotá → Villavicencio (distancias.py)
+    },
+}
+
+
 def formatear_precio(valor):
     """Convierte 380000 a '$380.000'"""
     return f"${valor:,.0f}".replace(",", ".")

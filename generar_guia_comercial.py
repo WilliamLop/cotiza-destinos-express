@@ -154,15 +154,15 @@ def tabla_dos_cols(filas, ancho_col1, ancho_col2, ST, estilo_extra=None):
 def portada(ST):
     elementos = []
 
-    # Bloque negro superior con logo y título
     logo_cell = ''
     if os.path.exists(LOGO_PATH):
         logo_cell = Image(LOGO_PATH, width=3.5*cm, height=3.5*cm)
 
     tabla_portada = Table(
-        [[logo_cell], [Paragraph('Guia de Uso', ST['portada_titulo'])],
-         [Paragraph('Bot de Cotizaciones — Destinos Express', ST['portada_sub'])],
-         [Paragraph('Herramienta interna para el area comercial', ST['portada_meta'])]],
+        [[logo_cell],
+         [Paragraph('Como usar el Bot de Cotizaciones', ST['portada_titulo'])],
+         [Paragraph('Guia rapida — Equipo Comercial Destinos Express', ST['portada_sub'])],
+         [Paragraph('En 5 minutos sabras todo lo que necesitas', ST['portada_meta'])]],
         colWidths=[PAGE_W - 4*cm]
     )
     tabla_portada.setStyle(TableStyle([
@@ -172,400 +172,339 @@ def portada(ST):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
     ]))
     elementos.append(tabla_portada)
-    elementos.append(Spacer(1, 16))
+    elementos.append(Spacer(1, 14))
 
-    # Intro rápida
-    intro = (
-        "Este documento explica como usar el bot de Telegram para generar cotizaciones "
-        "de forma rapida y precisa. Aqui encontraras los tipos de servicio disponibles, "
-        "como redactar los mensajes para obtener el mejor resultado, ejemplos practicos "
-        "y todo lo que necesitas saber antes de la primera prueba con un cliente."
-    )
-    elementos.append(Paragraph(intro, ST['cuerpo']))
-    elementos += separador()
-
+    elementos.append(caja_color(
+        [[Paragraph(
+            'TU NO CALCULAS NADA. El bot hace todo el trabajo: calcula el precio, '
+            'redacta la cotizacion y genera el PDF automaticamente.',
+            ST['nota']
+        )]],
+        DORADO_CLARO, ST, padding=10
+    ))
+    elementos.append(Spacer(1, 6))
     return elementos
 
 
-def seccion_como_funciona(ST):
+def seccion_flujo(ST):
     elementos = []
-    elementos += banner_seccion('1. Como funciona el bot', ST)
+    elementos += banner_seccion('1. Asi funciona — 3 pasos', ST)
 
+    ancho = PAGE_W - 4*cm
+    filas = [[
+        Paragraph('PASO 1\nEl cliente te pide un servicio', ST['tabla_header']),
+        Paragraph('PASO 2\nTu escribes en el bot con los 4 datos', ST['tabla_header']),
+        Paragraph('PASO 3\nEl bot calcula, cotiza y envia el PDF', ST['tabla_header']),
+    ]]
+    t = Table(filas, colWidths=[ancho/3, ancho/3, ancho/3])
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), NEGRO),
+        ('TEXTCOLOR',     (0, 0), (-1, -1), DORADO),
+        ('FONTNAME',      (0, 0), (-1, -1), F['cuerpo_bold']),
+        ('FONTSIZE',      (0, 0), (-1, -1), 10),
+        ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING',    (0, 0), (-1, -1), 16),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 16),
+        ('GRID',          (0, 0), (-1, -1), 1, DORADO_OSC),
+        ('LEADING',       (0, 0), (-1, -1), 16),
+    ]))
+    elementos.append(t)
+    elementos.append(Spacer(1, 10))
     elementos.append(Paragraph(
-        'El bot combina inteligencia artificial con un motor de precios propio. '
-        'No improvisa valores: cada precio sale directamente del tarifario oficial de Destinos Express.',
+        'El bot no improvisa precios. Cada valor sale del tarifario oficial. '
+        'Tu trabajo es darle la informacion completa.',
         ST['cuerpo']
     ))
-    elementos.append(Spacer(1, 8))
+    return elementos
 
-    # Flujo visual en tabla
-    filas = [
-        [Paragraph('Paso', ST['tabla_header']), Paragraph('Que ocurre', ST['tabla_header'])],
-        [Paragraph('1', ST['tabla_cel_c']),
-         Paragraph('Usted escribe el mensaje con los datos del servicio.', ST['tabla_cel'])],
-        [Paragraph('2', ST['tabla_cel_c']),
-         Paragraph('La IA lee el mensaje e identifica: origen, destino, pasajeros, fecha, hora y tipo de servicio.', ST['tabla_cel'])],
-        [Paragraph('3', ST['tabla_cel_c']),
-         Paragraph('El sistema busca el precio exacto en el tarifario oficial usando Python. La IA no calcula precios.', ST['tabla_cel'])],
-        [Paragraph('4', ST['tabla_cel_c']),
-         Paragraph('La IA redacta la cotizacion con el precio calculado y la envia por Telegram.', ST['tabla_cel'])],
-        [Paragraph('5', ST['tabla_cel_c']),
-         Paragraph('El bot genera y adjunta el PDF profesional con numero de cotizacion (DX-2026-XXXX).', ST['tabla_cel'])],
-        [Paragraph('6', ST['tabla_cel_c']),
-         Paragraph('La cotizacion queda guardada automaticamente en la base de datos interna.', ST['tabla_cel'])],
+
+def seccion_4_datos(ST):
+    elementos = []
+    elementos += banner_seccion('2. Los 4 datos que SIEMPRE necesitas', ST)
+
+    ancho = PAGE_W - 4*cm
+    datos = [
+        ('1.  De donde sale?', 'Nombre del lugar o direccion exacta', 'Hotel Estelar Calle 100'),
+        ('2.  A donde va?',    'Nombre del lugar o direccion exacta', 'MedPlus de la Calle 127'),
+        ('3.  Cuantas personas?', 'Numero de pasajeros', '3 personas'),
+        ('4.  Que dia y a que hora?', 'Fecha y hora de recogida', '8 de abril a las 4pm'),
     ]
-    t = tabla_dos_cols(filas, 1.5*cm, PAGE_W - 4*cm - 1.5*cm, ST)
+    filas = [[
+        Paragraph('Dato', ST['tabla_header']),
+        Paragraph('Que informar', ST['tabla_header']),
+        Paragraph('Ejemplo', ST['tabla_header']),
+    ]]
+    for dato, que, ej in datos:
+        filas.append([
+            Paragraph(dato, ST['label']),
+            Paragraph(que, ST['tabla_cel']),
+            Paragraph(ej, ST['cuerpo_italic']),
+        ])
+    t = Table(filas, colWidths=[ancho*0.28, ancho*0.38, ancho*0.34])
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, 0), NEGRO),
+        ('TEXTCOLOR',     (0, 0), (-1, 0), DORADO),
+        ('FONTNAME',      (0, 0), (-1, 0), F['cuerpo_bold']),
+        ('FONTSIZE',      (0, 0), (-1, -1), 9),
+        ('ROWBACKGROUNDS',(0, 1), (-1, -1), [DORADO_CLARO, BLANCO]),
+        ('GRID',          (0, 0), (-1, -1), 0.4, GRIS_MED),
+        ('TOPPADDING',    (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    elementos.append(t)
+    elementos.append(Spacer(1, 8))
+    elementos.append(Paragraph(
+        'Si no tienes estos 4 datos, el bot te los va a pedir antes de cotizar. '
+        'Mejor tenerlos listos desde el principio.',
+        ST['cuerpo_italic']
+    ))
+    return elementos
+
+
+def seccion_ejemplos(ST):
+    elementos = []
+    elementos += banner_seccion('3. Asi se escribe — ejemplos reales', ST)
+
+    ancho = PAGE_W - 4*cm
+    bien = (
+        '"Necesito un traslado desde el Hotel Estelar Calle 100 hasta el '
+        'MedPlus de la Calle 127, el 8 de abril a las 4pm, son 3 pasajeros."'
+    )
+    mal = (
+        '"cuanto vale un carro para bogota"\n'
+        '(falta: destino exacto, hora y numero de pasajeros)'
+    )
+    filas = [
+        [Paragraph('BIEN — escribe asi:', ST['tabla_header']),
+         Paragraph('MAL — evita esto:', ST['tabla_header'])],
+        [Paragraph(bien, ST['ejemplo_bien']),
+         Paragraph(mal,  ST['ejemplo_mal'])],
+    ]
+    t = Table(filas, colWidths=[ancho*0.5, ancho*0.5])
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1,  0), NEGRO),
+        ('BACKGROUND',    (0, 1), (0,   1), VERDE_CLARO),
+        ('BACKGROUND',    (1, 1), (1,   1), ROJO_CLARO),
+        ('GRID',          (0, 0), (-1, -1), 0.5, GRIS_MED),
+        ('TOPPADDING',    (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
+        ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
+    ]))
     elementos.append(t)
     elementos.append(Spacer(1, 8))
 
     elementos.append(caja_color(
         [[Paragraph(
-            'TIP CLAVE: Mientras mas datos incluya en el mensaje, mas precisa y completa sera la cotizacion. '
-            'Si falta informacion, el bot la pedira antes de cotizar — no inventa datos.',
+            'REGLA DE ORO: Escribe como si le explicaras a alguien por WhatsApp. '
+            'Completo y claro. El bot entiende lenguaje natural.',
             ST['nota']
         )]],
-        AZUL_CLARO, ST
+        VERDE_CLARO, ST, padding=8
     ))
+    elementos.append(Spacer(1, 10))
 
-    return elementos
-
-
-def seccion_datos_clave(ST):
-    elementos = []
-    elementos += banner_seccion('2. Los 4 datos que siempre necesita el bot', ST)
-
-    elementos.append(Paragraph(
-        'Para generar una cotizacion completa el bot necesita como minimo estos cuatro datos. '
-        'Si alguno falta, lo preguntara antes de dar el precio.',
-        ST['cuerpo']
-    ))
-    elementos.append(Spacer(1, 8))
-
-    filas = [
-        [Paragraph('Dato', ST['tabla_header']), Paragraph('Que informar', ST['tabla_header']), Paragraph('Ejemplo', ST['tabla_header'])],
-        [Paragraph('Origen y destino', ST['label']),
-         Paragraph('Ciudad o direccion de recogida y llegada', ST['tabla_cel']),
-         Paragraph('De Bogota a Tunja', ST['cuerpo_italic'])],
-        [Paragraph('Pasajeros', ST['label']),
-         Paragraph('Numero de personas que viajan', ST['tabla_cel']),
-         Paragraph('3 personas', ST['cuerpo_italic'])],
-        [Paragraph('Fecha', ST['label']),
-         Paragraph('Dia del servicio (incluir si es festivo o domingo)', ST['tabla_cel']),
-         Paragraph('sabado 12 de abril', ST['cuerpo_italic'])],
-        [Paragraph('Hora', ST['label']),
-         Paragraph('Hora de recogida (relevante para recargo nocturno)', ST['tabla_cel']),
-         Paragraph('a las 6:00 am', ST['cuerpo_italic'])],
+    # Más ejemplos por tipo
+    elementos.append(Paragraph('Mas ejemplos por tipo de servicio:', ST['h2']))
+    ejemplos = [
+        ('Bogota → Tunja, solo ida',
+         '"Cotizacion de Bogota a Tunja para 2 personas el viernes 11 de abril a las 7am. Solo ida."'),
+        ('Aeropuerto — madrugada',
+         '"Recogida en Chapinero para 1 persona el lunes a las 3:30am. Traslado al aeropuerto El Dorado."'),
+        ('Ida y vuelta mismo dia',
+         '"Transporte a Chia para 4 personas el sabado a las 9am. Ida y vuelta el mismo dia."'),
+        ('Por horas — evento',
+         '"Necesito una camioneta disponible 4 horas en Bogota el miercoles a partir de las 2pm."'),
+        ('Cliente corporativo',
+         '"Cotizacion para cliente Merz (corporativo). Bogota a Chia, 2 personas, lunes a las 9am."'),
     ]
-    ancho = PAGE_W - 4*cm
-    t = Table(filas, colWidths=[ancho*0.22, ancho*0.40, ancho*0.38])
-    t.setStyle(TableStyle([
-        ('BACKGROUND',    (0, 0), (-1, 0), NEGRO),
-        ('TEXTCOLOR',     (0, 0), (-1, 0), BLANCO),
-        ('FONTNAME',      (0, 0), (-1, 0), F['cuerpo_bold']),
-        ('FONTSIZE',      (0, 0), (-1, -1), 8.5),
-        ('ROWBACKGROUNDS',(0, 1), (-1, -1), [BLANCO, GRIS]),
-        ('GRID',          (0, 0), (-1, -1), 0.4, GRIS_MED),
-        ('TOPPADDING',    (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('LEFTPADDING',   (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
-        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    elementos.append(t)
-    elementos.append(Spacer(1, 8))
-
-    elementos.append(Paragraph('Datos opcionales que mejoran la cotizacion:', ST['h3']))
-    opcionales = [
-        'Si el destino es zona rural, vereda o finca (aplica recargo del 10-15%).',
-        'Si es un cliente corporativo (empresa con cuenta) o si el servicio es de ultima hora.',
-        'Si necesita ida y regreso el mismo dia (tarifa diferente a solo ida).',
-        'Si el servicio dura varios dias (incluye viaticos del conductor).',
-    ]
-    for op in opcionales:
-        elementos.append(Paragraph(f'• {op}', ST['bullet']))
-
-    return elementos
-
-
-def seccion_vehiculos(ST):
-    elementos = []
-    elementos += banner_seccion('3. Vehiculos disponibles', ST)
-
-    elementos.append(Paragraph(
-        'El bot selecciona el vehiculo automaticamente segun el numero de pasajeros. '
-        'Usted puede especificarlo si el cliente lo prefiere.',
-        ST['cuerpo']
-    ))
-    elementos.append(Spacer(1, 8))
-
-    filas = [
-        [Paragraph('Vehiculo', ST['tabla_header']),
-         Paragraph('Pasajeros', ST['tabla_header']),
-         Paragraph('Tipo de servicio tipico', ST['tabla_header'])],
-        [Paragraph('Camioneta Ejecutiva / SUV', ST['label']),
-         Paragraph('1 a 4', ST['tabla_cel_c']),
-         Paragraph('Traslados ejecutivos, familias, aeropuerto', ST['tabla_cel'])],
-        [Paragraph('Van Ejecutiva', ST['label']),
-         Paragraph('5 a 10', ST['tabla_cel_c']),
-         Paragraph('Grupos medianos, equipos corporativos', ST['tabla_cel'])],
-        [Paragraph('Van / Microbus', ST['label']),
-         Paragraph('11 a 16', ST['tabla_cel_c']),
-         Paragraph('Grupos grandes, congresos, eventos', ST['tabla_cel'])],
-        [Paragraph('Bus Especial', ST['label']),
-         Paragraph('17 a 40', ST['tabla_cel_c']),
-         Paragraph('Grupos numerosos, paseos empresariales', ST['tabla_cel'])],
-    ]
-    ancho = PAGE_W - 4*cm
-    t = Table(filas, colWidths=[ancho*0.38, ancho*0.18, ancho*0.44])
-    t.setStyle(TableStyle([
-        ('BACKGROUND',    (0, 0), (-1, 0), NEGRO),
-        ('TEXTCOLOR',     (0, 0), (-1, 0), BLANCO),
-        ('FONTNAME',      (0, 0), (-1, 0), F['cuerpo_bold']),
-        ('FONTSIZE',      (0, 0), (-1, -1), 8.5),
-        ('ROWBACKGROUNDS',(0, 1), (-1, -1), [BLANCO, GRIS]),
-        ('GRID',          (0, 0), (-1, -1), 0.4, GRIS_MED),
-        ('TOPPADDING',    (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('LEFTPADDING',   (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
-        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    elementos.append(t)
-
+    for caso, msg in ejemplos:
+        elementos.append(KeepTogether([
+            Paragraph(caso, ST['h3']),
+            caja_color([[Paragraph(msg, ST['cuerpo_italic'])]], DORADO_CLARO, ST, padding=6),
+            Spacer(1, 6),
+        ]))
     return elementos
 
 
 def seccion_tipos_servicio(ST):
     elementos = []
-    elementos += banner_seccion('4. Tipos de servicio y como pedirlos', ST)
+    elementos += banner_seccion('4. Tipos de servicio', ST)
 
-    servicios = [
-        {
-            'nombre': 'Ruta sencilla (solo ida)',
-            'descripcion': 'Traslado de una ciudad a otra, sin regreso. El precio cubre el trayecto de ida completo.',
-            'como': 'Mencione claramente que es "solo ida" o no mencione el regreso.',
-            'ejemplo_bien': '"Necesito transporte de Bogota a Villavicencio para 3 personas el viernes 18 de abril a las 8am. Solo ida."',
-            'ejemplo_mal': '"Llevar gente a Villa"  (muy vago, falta fecha, hora y pasajeros)',
-        },
-        {
-            'nombre': 'Ida y vuelta mismo dia',
-            'descripcion': 'El vehiculo va al destino, espera y regresa el mismo dia. Precio especial (mas economico que contratar dos servicios).',
-            'como': 'Indique explicitamente "ida y vuelta" o "regresa el mismo dia".',
-            'ejemplo_bien': '"Transporte a Chia para 4 personas el sabado 19 a las 9am. Ida y vuelta el mismo dia."',
-            'ejemplo_mal': '"Quiero ir y volver a Chia el fin de semana"  (no dice cuantos son ni la hora)',
-        },
-        {
-            'nombre': 'Aeropuerto El Dorado',
-            'descripcion': 'Traslado desde cualquier zona de Bogota hasta el aeropuerto El Dorado (o viceversa). Tarifa fija por zona.',
-            'como': 'Indique la zona o barrio de origen (o destino) dentro de Bogota.',
-            'ejemplo_bien': '"Recogida en Chapinero para una persona el lunes 21 de abril a las 4am. Traslado al aeropuerto."',
-            'ejemplo_mal': '"Traslado aeropuerto manana"  (sin zona, sin hora exacta)',
-        },
-        {
-            'nombre': 'Servicio urbano por kilometro',
-            'descripcion': 'Para movilizacion dentro de Bogota o el area metropolitana cuando se conoce la distancia aproximada.',
-            'como': 'Mencione que es dentro de la ciudad e indique los kilometros aproximados o direcciones.',
-            'ejemplo_bien': '"Recorrido urbano en Bogota, aproximadamente 25 km. Camioneta para 2 personas el jueves a las 7pm."',
-            'ejemplo_mal': '"Mover a alguien en Bogota"  (sin distancia ni direcciones)',
-        },
-        {
-            'nombre': 'Servicio por horas',
-            'descripcion': 'El vehiculo queda a disposicion del cliente por un numero de horas determinado. Ideal para eventos o reuniones.',
-            'como': 'Especifique cuantas horas necesita el vehiculo disponible.',
-            'ejemplo_bien': '"Necesito una camioneta por 4 horas en Bogota el miercoles 23 de abril a partir de las 2pm."',
-            'ejemplo_mal': '"Una camioneta un rato"  (sin numero de horas)',
-        },
-        {
-            'nombre': 'Servicio multidia (pernocta)',
-            'descripcion': 'El vehiculo y conductor se desplazan a otro municipio y pernoctan alli. Incluye viaticos del conductor (alimentacion y hospedaje).',
-            'como': 'Indique el destino, el numero de dias y que el servicio requiere pernocta o que regresa en dias distintos.',
-            'ejemplo_bien': '"Transporte a Medellin para 3 personas. Salen el martes 22 y regresan el jueves 24. Necesitan el vehiculo los 3 dias."',
-            'ejemplo_mal': '"Un viaje largo a Medellin varios dias"  (sin fechas ni si el conductor se queda)',
-        },
+    ancho = PAGE_W - 4*cm
+    filas = [
+        [Paragraph('Tipo', ST['tabla_header']),
+         Paragraph('Cuando usarlo', ST['tabla_header']),
+         Paragraph('Que decir en el mensaje', ST['tabla_header'])],
+        [Paragraph('Urbano (Bogota)', ST['label']),
+         Paragraph('Dentro de Bogota o area metropolitana', ST['tabla_cel']),
+         Paragraph('Origen y destino dentro de la ciudad', ST['tabla_cel'])],
+        [Paragraph('Intermunicipal', ST['label']),
+         Paragraph('A otro municipio o ciudad', ST['tabla_cel']),
+         Paragraph('"solo ida" si no regresa', ST['tabla_cel'])],
+        [Paragraph('Aeropuerto', ST['label']),
+         Paragraph('Al o desde el aeropuerto El Dorado', ST['tabla_cel']),
+         Paragraph('Menciona el barrio o zona de recogida', ST['tabla_cel'])],
+        [Paragraph('Ida y vuelta', ST['label']),
+         Paragraph('Va y regresa el mismo dia', ST['tabla_cel']),
+         Paragraph('"ida y vuelta el mismo dia"', ST['tabla_cel'])],
+        [Paragraph('Por horas', ST['label']),
+         Paragraph('Vehiculo disponible para eventos o diligencias', ST['tabla_cel']),
+         Paragraph('"necesito X horas de servicio"', ST['tabla_cel'])],
+        [Paragraph('Varios dias', ST['label']),
+         Paragraph('Conductor pernocta en destino', ST['tabla_cel']),
+         Paragraph('Fechas de salida y regreso', ST['tabla_cel'])],
+    ]
+    t = Table(filas, colWidths=[ancho*0.22, ancho*0.38, ancho*0.40])
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, 0), NEGRO),
+        ('TEXTCOLOR',     (0, 0), (-1, 0), DORADO),
+        ('FONTNAME',      (0, 0), (-1, 0), F['cuerpo_bold']),
+        ('FONTSIZE',      (0, 0), (-1, -1), 9),
+        ('ROWBACKGROUNDS',(0, 1), (-1, -1), [BLANCO, GRIS]),
+        ('GRID',          (0, 0), (-1, -1), 0.4, GRIS_MED),
+        ('TOPPADDING',    (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    elementos.append(t)
+    return elementos
+
+
+def seccion_errores(ST):
+    elementos = []
+    elementos += banner_seccion('5. Errores comunes — evitalos', ST)
+
+    errores = [
+        (
+            'Error 1: Destino ambiguo',
+            '"MedPlus" sin decir cual. Hay varios en Bogota y el bot puede encontrar el equivocado.',
+            'Escribe el nombre completo o la direccion: "MedPlus Calle 127" o "MedPlus Coliseo".'
+        ),
+        (
+            'Error 2: Olvidar la hora',
+            'Sin hora el bot no sabe si aplica recargo nocturno (despues de 7pm).',
+            'Siempre incluye la hora: "a las 4pm", "a las 5:30am", "a las 10 de la noche".'
+        ),
+        (
+            'Error 3: No decir cuantas personas van',
+            'El numero de pasajeros define que vehiculo se recomienda.',
+            'Siempre di cuantos son: "son 3 personas", "somos 2", "4 pasajeros".'
+        ),
     ]
 
-    for srv in servicios:
-        elementos += [KeepTogether([
-            Paragraph(srv['nombre'], ST['h2']),
-            Paragraph(srv['descripcion'], ST['cuerpo']),
-            Spacer(1, 4),
-            Paragraph(f'Como pedirlo: {srv["como"]}', ST['h3']),
+    for titulo, problema, solucion in errores:
+        elementos.append(KeepTogether([
             caja_color(
-                [[Paragraph(f'BIEN: {srv["ejemplo_bien"]}', ST['ejemplo_bien'])]],
-                VERDE_CLARO, ST, padding=6
-            ),
-            Spacer(1, 3),
-            caja_color(
-                [[Paragraph(f'EVITAR: {srv["ejemplo_mal"]}', ST['ejemplo_mal'])]],
+                [[Paragraph(f'X  {titulo}', ST['h2'])]],
                 ROJO_CLARO, ST, padding=6
             ),
-            Spacer(1, 10),
-        ])]
+            Spacer(1, 3),
+            Paragraph(f'Problema: {problema}', ST['cuerpo']),
+            Paragraph(f'Solucion: {solucion}', ST['ejemplo_bien']),
+            Spacer(1, 8),
+        ]))
 
     return elementos
 
 
-def seccion_niveles_precio(ST):
+def seccion_referencia(ST):
     elementos = []
-    elementos += banner_seccion('5. Niveles de precio', ST)
+    elementos += banner_seccion('6. Referencia rapida — ten esto a mano', ST)
 
-    elementos.append(Paragraph(
-        'El bot maneja tres niveles de precio segun el tipo de cliente o urgencia del servicio.',
-        ST['cuerpo']
-    ))
-    elementos.append(Spacer(1, 8))
-
-    filas = [
-        [Paragraph('Nivel', ST['tabla_header']),
-         Paragraph('Cuando aplica', ST['tabla_header']),
-         Paragraph('Ajuste', ST['tabla_header']),
-         Paragraph('Como indicarlo', ST['tabla_header'])],
-        [Paragraph('Particular', ST['label']),
-         Paragraph('Cliente natural, sin empresa', ST['tabla_cel']),
-         Paragraph('Sin recargo', ST['tabla_cel_c']),
-         Paragraph('Es el nivel por defecto. No necesita especificarlo.', ST['tabla_cel'])],
-        [Paragraph('Corporativo', ST['label']),
-         Paragraph('Empresa o cliente con cuenta', ST['tabla_cel']),
-         Paragraph('+8%', ST['tabla_cel_c']),
-         Paragraph('Mencione: "cliente corporativo", "empresa X", "cuenta empresarial".', ST['tabla_cel'])],
-        [Paragraph('Ultima hora', ST['label']),
-         Paragraph('Solicitud el mismo dia o muy urgente', ST['tabla_cel']),
-         Paragraph('+15%', ST['tabla_cel_c']),
-         Paragraph('Mencione: "para hoy", "urgente", "mismo dia". El bot lo detecta automaticamente.', ST['tabla_cel'])],
-    ]
     ancho = PAGE_W - 4*cm
-    t = Table(filas, colWidths=[ancho*0.17, ancho*0.25, ancho*0.12, ancho*0.46])
-    t.setStyle(TableStyle([
-        ('BACKGROUND',    (0, 0), (-1, 0), NEGRO),
-        ('TEXTCOLOR',     (0, 0), (-1, 0), BLANCO),
-        ('FONTNAME',      (0, 0), (-1, 0), F['cuerpo_bold']),
-        ('FONTSIZE',      (0, 0), (-1, -1), 8.5),
-        ('ROWBACKGROUNDS',(0, 1), (-1, -1), [BLANCO, GRIS]),
-        ('GRID',          (0, 0), (-1, -1), 0.4, GRIS_MED),
-        ('TOPPADDING',    (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('LEFTPADDING',   (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
-        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    elementos.append(t)
 
-    return elementos
-
-
-def seccion_recargos(ST):
-    elementos = []
-    elementos += banner_seccion('6. Recargos automaticos', ST)
-
-    elementos.append(Paragraph(
-        'El bot aplica estos recargos automaticamente cuando detecta las condiciones. '
-        'Usted solo necesita mencionar los detalles del servicio con precision.',
-        ST['cuerpo']
-    ))
-    elementos.append(Spacer(1, 8))
-
-    filas = [
+    # Recargos
+    elementos.append(Paragraph('Recargos que aplica el bot automaticamente:', ST['h2']))
+    filas_rec = [
         [Paragraph('Recargo', ST['tabla_header']),
-         Paragraph('%', ST['tabla_header']),
          Paragraph('Cuando aplica', ST['tabla_header']),
-         Paragraph('Como mencionarlo', ST['tabla_header'])],
+         Paragraph('Cuanto sube el precio', ST['tabla_header'])],
         [Paragraph('Nocturno', ST['label']),
-         Paragraph('+15%', ST['tabla_cel_c']),
-         Paragraph('Servicios entre las 7:00pm y las 7:00am', ST['tabla_cel']),
-         Paragraph('"a las 10pm", "a las 5am", "de madrugada"', ST['tabla_cel'])],
-        [Paragraph('Festivo', ST['label']),
-         Paragraph('+10%', ST['tabla_cel_c']),
-         Paragraph('Domingos y festivos oficiales colombianos', ST['tabla_cel']),
-         Paragraph('Indique la fecha exacta; el bot identifica si es festivo.', ST['tabla_cel'])],
+         Paragraph('Despues de 7pm o antes de 7am', ST['tabla_cel']),
+         Paragraph('+15%', ST['tabla_cel_c'])],
+        [Paragraph('Festivo / Domingo', ST['label']),
+         Paragraph('Domingos y festivos oficiales', ST['tabla_cel']),
+         Paragraph('+10%', ST['tabla_cel_c'])],
+        [Paragraph('Corporativo', ST['label']),
+         Paragraph('Cliente con empresa o cuenta', ST['tabla_cel']),
+         Paragraph('+8%', ST['tabla_cel_c'])],
         [Paragraph('Zona rural', ST['label']),
-         Paragraph('+10% a +15%', ST['tabla_cel_c']),
          Paragraph('Veredas, fincas, carreteras destapadas', ST['tabla_cel']),
-         Paragraph('"vereda X", "finca en Y", "carretera destapada"', ST['tabla_cel'])],
+         Paragraph('+10% a +15%', ST['tabla_cel_c'])],
     ]
-    ancho = PAGE_W - 4*cm
-    t = Table(filas, colWidths=[ancho*0.15, ancho*0.12, ancho*0.35, ancho*0.38])
+    t = Table(filas_rec, colWidths=[ancho*0.22, ancho*0.50, ancho*0.28])
     t.setStyle(TableStyle([
         ('BACKGROUND',    (0, 0), (-1, 0), NEGRO),
-        ('TEXTCOLOR',     (0, 0), (-1, 0), BLANCO),
+        ('TEXTCOLOR',     (0, 0), (-1, 0), DORADO),
         ('FONTNAME',      (0, 0), (-1, 0), F['cuerpo_bold']),
-        ('FONTSIZE',      (0, 0), (-1, -1), 8.5),
+        ('FONTSIZE',      (0, 0), (-1, -1), 9),
         ('ROWBACKGROUNDS',(0, 1), (-1, -1), [BLANCO, GRIS]),
         ('GRID',          (0, 0), (-1, -1), 0.4, GRIS_MED),
-        ('TOPPADDING',    (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING',    (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
         ('LEFTPADDING',   (0, 0), (-1, -1), 8),
         ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
         ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN',         (2, 1), (2, -1), 'CENTER'),
     ]))
     elementos.append(t)
-    elementos.append(Spacer(1, 8))
+    elementos.append(Spacer(1, 12))
 
+    # Vehiculos
+    elementos.append(Paragraph('Vehiculo segun numero de pasajeros:', ST['h2']))
+    filas_veh = [
+        [Paragraph('Pasajeros', ST['tabla_header']),
+         Paragraph('Vehiculo asignado', ST['tabla_header'])],
+        [Paragraph('1 a 4', ST['tabla_cel_c']), Paragraph('Camioneta Ejecutiva / SUV', ST['tabla_cel'])],
+        [Paragraph('5 a 10', ST['tabla_cel_c']), Paragraph('Van Ejecutiva', ST['tabla_cel'])],
+        [Paragraph('11 a 16', ST['tabla_cel_c']), Paragraph('Van / Microbus', ST['tabla_cel'])],
+        [Paragraph('17 a 40', ST['tabla_cel_c']), Paragraph('Bus Especial', ST['tabla_cel'])],
+    ]
+    t2 = Table(filas_veh, colWidths=[ancho*0.25, ancho*0.75])
+    t2.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, 0), NEGRO),
+        ('TEXTCOLOR',     (0, 0), (-1, 0), DORADO),
+        ('FONTNAME',      (0, 0), (-1, 0), F['cuerpo_bold']),
+        ('FONTSIZE',      (0, 0), (-1, -1), 9),
+        ('ROWBACKGROUNDS',(0, 1), (-1, -1), [BLANCO, GRIS]),
+        ('GRID',          (0, 0), (-1, -1), 0.4, GRIS_MED),
+        ('TOPPADDING',    (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN',         (0, 1), (0, -1), 'CENTER'),
+    ]))
+    elementos.append(t2)
+    elementos.append(Spacer(1, 12))
+
+    # Comando reset
     elementos.append(caja_color(
         [[Paragraph(
-            'IMPORTANTE: Los recargos se acumulan. Un servicio nocturno en festivo a zona rural '
-            'puede tener hasta 3 recargos aplicados. El desglose aparece detallado en el PDF.',
+            '/reset  —  Escribe esto en el bot para borrar la conversacion y empezar de cero. '
+            'Usalo entre cotizaciones distintas. El bot no se cansa.',
             ST['nota']
         )]],
-        AZUL_CLARO, ST
+        DORADO_CLARO, ST, padding=10
     ))
-
-    return elementos
-
-
-def seccion_destinos(ST):
-    elementos = []
-    elementos += banner_seccion('7. Destinos en el tarifario oficial', ST)
-
-    elementos.append(Paragraph(
-        'Estos destinos tienen precio fijo en el tarifario. '
-        'Para cualquier otro destino, el bot estima el precio con base en kilometraje.',
-        ST['cuerpo']
-    ))
-    elementos.append(Spacer(1, 8))
-
-    zonas = [
-        ('Sabana Norte', 'Chia, Cajica, Zipaquira, Sopo, Tocancipa'),
-        ('Sabana Occidente', 'Mosquera, Funza, Madrid, Facatativa, El Rosal'),
-        ('Sabana Sur', 'Sibate, Fusagasuga, Silvania, Guasca, La Calera'),
-        ('Corredor Tolima', 'Girardot, Melgar, Ibague, Espinal'),
-        ('Meta', 'Villavicencio, Restrepo, Cumaral'),
-        ('Boyaca', 'Tunja, Paipa, Duitama, Sogamoso, Villa de Leyva, Chiquinquira'),
-        ('Ciudades principales', 'Medellin, Cali, Pereira, Armenia, Manizales'),
-        ('Soacha (ida y vuelta)', 'Soacha Centro, San Mateo, Compartir'),
-        ('Otras rutas i/v', 'Ubate, Simijaca, Choachi, Fomeque, Ubaque, Sasaima, La Vega, Villeta'),
-    ]
-
-    filas = [[Paragraph('Zona', ST['tabla_header']), Paragraph('Municipios / Destinos', ST['tabla_header'])]]
-    for zona, destinos in zonas:
-        filas.append([Paragraph(zona, ST['label']), Paragraph(destinos, ST['tabla_cel'])])
-
-    ancho = PAGE_W - 4*cm
-    t = Table(filas, colWidths=[ancho*0.30, ancho*0.70])
-    t.setStyle(TableStyle([
-        ('BACKGROUND',    (0, 0), (-1, 0), NEGRO),
-        ('TEXTCOLOR',     (0, 0), (-1, 0), BLANCO),
-        ('FONTNAME',      (0, 0), (-1, 0), F['cuerpo_bold']),
-        ('FONTSIZE',      (0, 0), (-1, -1), 8.5),
-        ('ROWBACKGROUNDS',(0, 1), (-1, -1), [BLANCO, GRIS]),
-        ('GRID',          (0, 0), (-1, -1), 0.4, GRIS_MED),
-        ('TOPPADDING',    (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LEFTPADDING',   (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
-        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
-    elementos.append(t)
 
     return elementos
 
 
 def seccion_aeropuerto(ST):
     elementos = []
-    elementos += banner_seccion('8. Zonas de aeropuerto El Dorado', ST)
+    elementos += banner_seccion('Tarifas aeropuerto El Dorado (camioneta, particular)', ST)
 
     elementos.append(Paragraph(
-        'El traslado al aeropuerto tiene tarifa fija segun la zona de Bogota. '
-        'Para cotizar correctamente, indique el barrio o sector de recogida (o entrega).',
+        'Tarifa fija segun zona de Bogota. Menciona el barrio o sector al pedir la cotizacion.',
         ST['cuerpo']
     ))
     elementos.append(Spacer(1, 8))
@@ -651,122 +590,6 @@ def seccion_aeropuerto(ST):
     return elementos
 
 
-def seccion_comandos(ST):
-    elementos = []
-    elementos += banner_seccion('9. Comandos del bot', ST)
-
-    filas = [
-        [Paragraph('Comando', ST['tabla_header']), Paragraph('Que hace', ST['tabla_header'])],
-        [Paragraph('/start', ST['label']),
-         Paragraph('Inicia una nueva sesion y muestra el mensaje de bienvenida. Usar al abrir el bot por primera vez.', ST['tabla_cel'])],
-        [Paragraph('/reset', ST['label']),
-         Paragraph('Borra la conversacion actual e inicia una en blanco. Util cuando se quiere cotizar un servicio diferente sin mezclar informacion.', ST['tabla_cel'])],
-    ]
-    t = tabla_dos_cols(filas, 2.5*cm, PAGE_W - 4*cm - 2.5*cm, ST)
-    elementos.append(t)
-    elementos.append(Spacer(1, 8))
-
-    elementos.append(caja_color(
-        [[Paragraph(
-            'Use /reset entre cotizaciones distintas. El bot recuerda el contexto de la conversacion, '
-            'por lo que mezclar dos servicios en el mismo chat puede generar confusiones.',
-            ST['nota']
-        )]],
-        AZUL_CLARO, ST
-    ))
-
-    return elementos
-
-
-def seccion_ejemplos_completos(ST):
-    elementos = []
-    elementos += banner_seccion('10. Ejemplos de mensajes completos', ST)
-
-    elementos.append(Paragraph(
-        'A continuacion, ejemplos reales de mensajes que generan cotizaciones precisas al primer intento.',
-        ST['cuerpo']
-    ))
-    elementos.append(Spacer(1, 8))
-
-    ejemplos = [
-        {
-            'caso': 'Ruta sencilla — cliente particular',
-            'msg': 'Necesito transporte de Bogota a Tunja para 3 personas el sabado 19 de abril a las 6:30am. Solo ida.',
-        },
-        {
-            'caso': 'Ida y vuelta — cliente corporativo',
-            'msg': 'Buenos dias, cotizacion para cliente corporativo (empresa Merz). Transporte Bogota a Chia para 2 personas, ida y vuelta el mismo dia, lunes 21 de abril a las 9am.',
-        },
-        {
-            'caso': 'Aeropuerto — nocturno',
-            'msg': 'Recogida en Usaquen para 1 persona el martes 22 de abril a las 3:30am. Traslado al aeropuerto El Dorado. Vuelo internacional.',
-        },
-        {
-            'caso': 'Servicio por horas — evento',
-            'msg': 'Necesito una van ejecutiva para 8 personas disponible 5 horas en Bogota el miercoles 23 de abril a partir de las 2pm. Es para un evento corporativo.',
-        },
-        {
-            'caso': 'Multidia — pernocta',
-            'msg': 'Transporte a Villavicencio para 4 personas. Salen el jueves 24 de abril a las 7am y regresan el sabado 26 en la tarde. El conductor debe quedarse esos dias.',
-        },
-        {
-            'caso': 'Zona rural — festivo',
-            'msg': 'Servicio a una finca en vereda de Fusagasuga para 4 personas el domingo 20 de abril a las 8am. La via de acceso a la finca es destapada.',
-        },
-    ]
-
-    for ej in ejemplos:
-        elementos.append(KeepTogether([
-            Paragraph(ej['caso'], ST['h3']),
-            caja_color(
-                [[Paragraph(ej['msg'], ST['cuerpo_italic'])]],
-                DORADO_CLARO, ST, padding=8
-            ),
-            Spacer(1, 8),
-        ]))
-
-    return elementos
-
-
-def seccion_tips(ST):
-    elementos = []
-    elementos += banner_seccion('11. Tips para sacar el mejor provecho', ST)
-
-    tips = [
-        ('Sea especifico con la hora',
-         'La diferencia entre las 6pm y las 8pm puede significar un recargo nocturno. '
-         'Siempre incluya la hora exacta.'),
-        ('Mencione si es festivo o domingo',
-         'El bot identifica festivos por fecha, pero si tiene duda, puede escribir '
-         '"es festivo" o "es domingo" directamente.'),
-        ('Indique si es zona rural o finca',
-         'Si el destino final es una vereda, finca o carretera destapada, '
-         'mencionelo. Afecta el precio y permite dar informacion precisa al conductor.'),
-        ('Corporativo es diferente a particular',
-         'Si el cliente tiene una empresa o cuenta corporativa, indicarlo ajusta '
-         'el precio correctamente y aparece en el PDF.'),
-        ('Use /reset entre cotizaciones',
-         'El bot recuerda el contexto. Si pasa de una cotizacion de aeropuerto a una '
-         'ruta intermunicipal sin hacer reset, puede haber confusion.'),
-        ('El PDF sale automaticamente',
-         'No hay que pedirle al bot que genere el PDF. Lo genera solo cuando la '
-         'cotizacion esta completa. Lleva numero, fecha de validez y todos los detalles.'),
-        ('Puede preguntar libremente',
-         'Si el cliente hace preguntas adicionales (incluye peajes, que vehiculo es, etc.), '
-         'escribalas en el chat. El bot responde y vuelve a la cotizacion cuando corresponde.'),
-        ('Destinos fuera del tarifario',
-         'Si el destino no esta en la lista, el bot igual cotiza con base en kilometraje. '
-         'El precio sera estimado y el PDF lo indica claramente.'),
-    ]
-
-    for i, (titulo, desc) in enumerate(tips, 1):
-        elementos.append(KeepTogether([
-            Paragraph(f'{i}. {titulo}', ST['h2']),
-            Paragraph(desc, ST['cuerpo']),
-            Spacer(1, 4),
-        ]))
-
-    return elementos
 
 
 def pie_pagina(canvas, doc):
@@ -796,17 +619,13 @@ def generar_guia(ruta_salida='guia_bot_comercial.pdf'):
 
     historia = []
     historia += portada(ST)
-    historia += seccion_como_funciona(ST)
-    historia += seccion_datos_clave(ST)
-    historia += seccion_vehiculos(ST)
+    historia += seccion_flujo(ST)
+    historia += seccion_4_datos(ST)
+    historia += seccion_ejemplos(ST)
     historia += seccion_tipos_servicio(ST)
-    historia += seccion_niveles_precio(ST)
-    historia += seccion_recargos(ST)
-    historia += seccion_destinos(ST)
+    historia += seccion_errores(ST)
+    historia += seccion_referencia(ST)
     historia += seccion_aeropuerto(ST)
-    historia += seccion_comandos(ST)
-    historia += seccion_ejemplos_completos(ST)
-    historia += seccion_tips(ST)
 
     doc.build(historia, onFirstPage=pie_pagina, onLaterPages=pie_pagina)
     print(f'PDF generado: {ruta_salida}')

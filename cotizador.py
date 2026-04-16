@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Optional
 from tarifas import (
     TARIFAS, TARIFAS_ZONA, RECARGOS, AEROPUERTO_BOGOTA, AEROPUERTO_EL_DORADO_HOTELES,
-    RUTAS, RUTAS_IDA_VUELTA,
+    RUTAS, RUTAS_IDA_VUELTA, CORREDORES,
     SERVICIOS_MULTI_DIA, VARIABLES_OPERATIVAS, formatear_precio, precio_con_nivel,
 )
 from maps import consultar_ruta
@@ -45,6 +45,70 @@ def buscar_clave_destino(destino_raw: str, tabla: dict) -> Optional[str]:
         if clave in k or k in clave:
             return k
     return None
+
+
+def _detectar_corredor(via_resumen: str) -> Optional[dict]:
+    """
+    Mapea el 'summary' de Google Maps Directions a un corredor de salida de Bogotá.
+    Retorna el dict del corredor o None si no hay coincidencia.
+    """
+    if not via_resumen:
+        return None
+    via_lower = via_resumen.lower()
+    for corredor in CORREDORES.values():
+        for kw in corredor["keywords_via"]:
+            if kw in via_lower:
+                return corredor
+    return None
+
+
+def calcular_intermunicipal_corredor(
+    km: float,
+    via_resumen: str,
+    vehiculo: str,
+    nivel: str,
+    nocturno: bool,
+    festivo: bool,
+    rural: bool,
+) -> Optional["ResultadoCotizacion"]:
+    """
+    Interpola el precio para un destino intermunicipal o metropolitano que no está
+    en RUTAS, usando la lógica del gerente:
+
+        precio = km_nuevo × (precio_ref / km_ref)
+
+    La ciudad de referencia se elige por el corredor de salida detectado a partir
+    del nombre de la vía que devuelve Google Maps Directions ('via_resumen').
+    """
+    corredor = _detectar_corredor(via_resumen)
+    if corredor is None:
+        return None
+
+    ref_key  = corredor["referencia"]
+    km_ref   = corredor["km_ref"]
+    precio_ref = RUTAS.get(vehiculo, {}).get(ref_key)
+
+    if not precio_ref or km_ref <= 0:
+        return None
+
+    precio_km  = precio_ref / km_ref
+    precio_base = round(km * precio_km / 1000) * 1000   # redondea al millar
+
+    nombre_ref = ref_key.replace("_", " ").title()
+    concepto   = (
+        f"Traslado estimado — {corredor['nombre']} · {km:.0f} km"
+    )
+    notas = (
+        f"Estimado por corredor — referencia: {nombre_ref} "
+        f"({km_ref} km = {formatear_precio(precio_ref)}) → "
+        f"{precio_km:.0f} COP/km · "
+        f"⚠️ Sujeto a confirmación del gerente"
+    )
+
+    return _construir_resultado(
+        precio_base, nivel, nocturno, festivo, rural,
+        "corredor_intermunicipal", concepto, notas=notas,
+    )
 
 
 def _aplicar_recargos(precio_base: int, nocturno: bool, festivo: bool, rural: bool):
@@ -85,11 +149,12 @@ def calcular_por_zona(origen: str, destino: str, vehiculo: str, nivel: str,
     if ruta is None:
         return None
 
-    km      = ruta["km"]
-    minutos = ruta["duracion_min"]
-    zona    = ruta["zona"]
-    rural   = ruta["es_rural"]
-    municipio = ruta["municipio_destino"]
+    km          = ruta["km"]
+    minutos     = ruta["duracion_min"]
+    zona        = ruta["zona"]
+    rural       = ruta["es_rural"]
+    municipio   = ruta["municipio_destino"]
+    via_resumen = ruta.get("via_resumen", "")
 
     tarifas_vehiculo = TARIFAS_ZONA.get(zona, {}).get(vehiculo)
 
@@ -140,7 +205,14 @@ def calcular_por_zona(origen: str, destino: str, vehiculo: str, nivel: str,
             tipo_servicio="urbano_km" if zona == "urbana" else "metropolitana",
         )
 
-    # Zona intermunicipal o destino no reconocido: fallback a variables operativas
+    # Zona intermunicipal: intentar corredor del gerente antes del fallback de costos
+    resultado_corredor = calcular_intermunicipal_corredor(
+        km, via_resumen, vehiculo, nivel, nocturno, festivo, rural
+    )
+    if resultado_corredor:
+        return resultado_corredor
+
+    # Último recurso: estimación por variables operativas
     return calcular_destino_no_cargado(km, vehiculo, nivel, nocturno, festivo, rural)
 
 

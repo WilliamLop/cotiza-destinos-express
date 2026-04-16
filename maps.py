@@ -106,42 +106,64 @@ def detectar_zona(municipio: str, km: float = 0) -> str:
 
 def consultar_ruta(origen: str, destino: str) -> dict:
     """
-    Llama a Distance Matrix + Geocoding para obtener:
-    - km reales entre origen y destino
-    - municipio del destino
-    - zona (urbana / metropolitana / intermunicipal)
-    - es_rural (heurística básica por tipo de vía)
+    Obtiene km reales, tiempo, municipio, zona y vía principal entre origen y destino.
 
-    Retorna dict con los resultados, o None si la consulta falla.
+    Intenta Directions API primero (devuelve `via_resumen` con el nombre de la vía,
+    necesario para detectar el corredor de salida de Bogotá). Si falla, cae a
+    Distance Matrix (mismo resultado pero sin `via_resumen`).
+
+    Retorna dict con los resultados, o None si ambas consultas fallan.
     """
     try:
         gmaps = _get_client()
 
-        # Incluir ciudad de origen como contexto para ambas consultas
         ciudad_origen = _extraer_ciudad(origen)
         destino_con_ctx = f"{destino}, {ciudad_origen}, Colombia" if ciudad_origen else f"{destino}, Colombia"
 
-        # ── Distancia real ──────────────────────────────────────────────────
-        matriz = gmaps.distance_matrix(
-            origins=[f"{origen}, Colombia"],
-            destinations=[destino_con_ctx],
-            mode="driving",
-            language="es",
-            units="metric",
-            region="co",
-        )
+        km = None
+        duracion_min = None
+        via_resumen = ""
 
-        elemento = matriz["rows"][0]["elements"][0]
-        if elemento["status"] != "OK":
-            logging.warning(f"[Maps] Distance Matrix status: {elemento['status']} | {origen} → {destino_con_ctx}")
-            return None
+        # ── Intento 1: Directions API (da summary / nombre de vía) ──────────
+        try:
+            rutas = gmaps.directions(
+                origin=f"{origen}, Colombia",
+                destination=destino_con_ctx,
+                mode="driving",
+                language="es",
+                region="co",
+            )
+            if rutas and rutas[0].get("legs"):
+                leg = rutas[0]["legs"][0]
+                km = round(leg["distance"]["value"] / 1000, 1)
+                duracion_min = round(leg["duration"]["value"] / 60)
+                via_resumen = rutas[0].get("summary", "")
+                logging.info(f"[Maps/Directions] {origen} → {destino}: {km} km · vía: '{via_resumen}'")
+        except Exception as e_dir:
+            logging.warning(f"[Maps] Directions API falló ({type(e_dir).__name__}), usando Distance Matrix")
 
-        km = round(elemento["distance"]["value"] / 1000, 1)
-        duracion_min = round(elemento["duration"]["value"] / 60)
+        # ── Intento 2: Distance Matrix (fallback sin via_resumen) ────────────
+        if km is None:
+            matriz = gmaps.distance_matrix(
+                origins=[f"{origen}, Colombia"],
+                destinations=[destino_con_ctx],
+                mode="driving",
+                language="es",
+                units="metric",
+                region="co",
+            )
+            elemento = matriz["rows"][0]["elements"][0]
+            if elemento["status"] != "OK":
+                logging.warning(
+                    f"[Maps] Distance Matrix status: {elemento['status']} | {origen} → {destino_con_ctx}"
+                )
+                return None
+            km = round(elemento["distance"]["value"] / 1000, 1)
+            duracion_min = round(elemento["duration"]["value"] / 60)
+            logging.info(f"[Maps/DistMatrix] {origen} → {destino}: {km} km")
 
-        # ── Municipio del destino ───────────────────────────────────────────
-        query_destino = destino_con_ctx
-        geo = gmaps.geocode(query_destino, language="es", region="co")
+        # ── Municipio del destino (geocoding) ────────────────────────────────
+        geo = gmaps.geocode(destino_con_ctx, language="es", region="co")
         municipio = "desconocido"
         es_rural = False
 
@@ -153,24 +175,20 @@ def consultar_ruta(origen: str, destino: str) -> dict:
                     municipio = comp["long_name"]
                     break
 
-            # Heurística rural: si el resultado contiene "vereda", "corregimiento"
-            # o el tipo de lugar es "route" fuera de zona urbana
             direccion_completa = geo[0].get("formatted_address", "").lower()
             if any(p in direccion_completa for p in ["vereda", "corregimiento", "inspección", "finca"]):
                 es_rural = True
 
         zona = detectar_zona(municipio, km)
 
-        resultado = {
+        return {
             "km": km,
             "duracion_min": duracion_min,
             "municipio_destino": municipio,
             "zona": zona,
             "es_rural": es_rural,
+            "via_resumen": via_resumen,   # nombre de vía (ej: "Autopista Norte")
         }
-
-        logging.info(f"[Maps] {origen} → {destino}: {km} km, {municipio} ({zona})")
-        return resultado
 
     except Exception as e:
         logging.error(f"[Maps] Error consultando ruta {origen} → {destino}: {type(e).__name__}: {e}")

@@ -129,6 +129,7 @@ Reglas:
 - zona_aeropuerto: solo si tipo_servicio="aeropuerto" (ej: "Calle 127", "Guaymaral", "Compartir")
 - nivel_comercial: "corporativo" si menciona empresa/cliente corporativo, "ultima_hora" si es mismo día o muy urgente, "particular" por defecto
 - tipo_servicio "ida_vuelta" si explícitamente menciona ir y regresar el mismo día
+- horas: SOLO para "por_horas". También para "ida_vuelta" cuando el conductor espera en destino un número de horas (ej: "disponible 10 horas", "esperar allá hasta las 6pm", "vehículo disponible todo el día"). Calcula las horas de espera en destino, no el tiempo de viaje.
 - km: para urbano_km, estima los km en Bogotá si conoces ambas ubicaciones (ej: Calle 100 → Chapinero ≈ 5 km, Calle 100 → Kennedy ≈ 15 km). Pon null si no puedes estimarlo.
 """.strip()
 
@@ -393,7 +394,7 @@ async def procesar_cotizacion(historial: list) -> tuple:
         datos_pdf["desglose"] = resultado.desglose
         datos_pdf["recargos"] = resultado.recargos_aplicados
         if resultado.notas:
-            datos_pdf.setdefault("notas", resultado.notas)
+            datos_pdf["notas"] = resultado.notas
 
     return texto_final, datos_pdf
 
@@ -471,7 +472,11 @@ async def manejar_mensaje(update: Update, context: ContextTypes.DEFAULT_TYPE):
         historiales[chat_id] = historiales[chat_id][-limite:]
 
     # ── Enviar respuesta al cliente ──
-    await update.message.reply_text(texto, parse_mode="Markdown")
+    try:
+        await update.message.reply_text(texto, parse_mode="Markdown")
+    except Exception:
+        # Markdown inválido → reenviar como texto plano
+        await update.message.reply_text(texto)
 
     # ── Generar y enviar PDF si la cotización está completa ──
     pdf_numero = None

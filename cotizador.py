@@ -9,6 +9,7 @@ from tarifas import (
     TARIFAS, TARIFAS_ZONA, RECARGOS, AEROPUERTO_BOGOTA, AEROPUERTO_EL_DORADO_HOTELES,
     RUTAS, RUTAS_IDA_VUELTA, CORREDORES,
     SERVICIOS_MULTI_DIA, VARIABLES_OPERATIVAS, formatear_precio, precio_con_nivel,
+    redondear_precio,
 )
 from maps import consultar_ruta
 
@@ -626,6 +627,30 @@ def calcular_destino_no_cargado(km: float, vehiculo: str, nivel: str,
 
 # ─── DISPATCHER PRINCIPAL ──────────────────────────────────────────────────────
 
+def _aplicar_redondeo(resultado: Optional["ResultadoCotizacion"]) -> Optional["ResultadoCotizacion"]:
+    """
+    Redondea precio_final al millar más cercano y actualiza la línea 'Total'
+    en el desglose. Se aplica una sola vez al salir del dispatcher.
+    """
+    if resultado is None:
+        return None
+    precio_r = redondear_precio(resultado.precio_final)
+    desglose = [
+        {"concepto": "Total", "valor": formatear_precio(precio_r)}
+        if d["concepto"] == "Total" else d
+        for d in resultado.desglose
+    ]
+    return ResultadoCotizacion(
+        precio_particular=resultado.precio_particular,
+        precio_final=precio_r,
+        nivel=resultado.nivel,
+        desglose=desglose,
+        recargos_aplicados=resultado.recargos_aplicados,
+        notas=resultado.notas,
+        tipo_servicio=resultado.tipo_servicio,
+    )
+
+
 def cotizar(params: dict) -> Optional[ResultadoCotizacion]:
     """
     Recibe el dict extraído del bloque [PARAMS] de Claude y despacha
@@ -648,54 +673,47 @@ def cotizar(params: dict) -> Optional[ResultadoCotizacion]:
     dias     = params.get("dias")
     zona     = params.get("zona_aeropuerto", "")
 
+    resultado = None
+
     if tipo == "ruta_sencilla":
         resultado = calcular_ruta_sencilla(destino, vehiculo, nivel, nocturno, festivo, rural)
         if resultado is None:
-            # Intentar con Google Maps (zona metropolitana o destino fuera de tabla)
             resultado = calcular_por_zona(origen, destino, vehiculo, nivel, nocturno, festivo)
         if resultado is None and km:
             resultado = calcular_destino_no_cargado(km, vehiculo, nivel, nocturno, festivo, rural)
-        return resultado
 
-    if tipo == "ida_vuelta":
-        # Con horas en destino: servicio compuesto ida + espera + vuelta
+    elif tipo == "ida_vuelta":
         if horas and float(horas) > 0:
             resultado = calcular_ida_vuelta_con_espera(
                 origen, destino, vehiculo, nivel,
                 float(horas), nocturno, festivo, rural,
             )
-            if resultado:
-                return resultado
-
-        # Ida y vuelta estándar (sin espera especificada)
-        resultado = calcular_ruta_ida_vuelta(destino, vehiculo, nivel, nocturno, festivo, rural)
         if resultado is None:
-            resultado = calcular_por_zona(origen, destino, vehiculo, nivel, nocturno, festivo)
+            resultado = calcular_ruta_ida_vuelta(destino, vehiculo, nivel, nocturno, festivo, rural)
+        if resultado is None:
+            # Destino fuera de tabla: calcular ambas piernas (ida + vuelta, 0h espera)
+            resultado = calcular_ida_vuelta_con_espera(
+                origen, destino, vehiculo, nivel, 0, nocturno, festivo, rural,
+            )
         if resultado is None and km:
             resultado = calcular_destino_no_cargado(km, vehiculo, nivel, nocturno, festivo, rural)
-        return resultado
 
-    if tipo == "aeropuerto":
-        return calcular_aeropuerto(zona or destino, vehiculo, nivel, nocturno, festivo)
+    elif tipo == "aeropuerto":
+        resultado = calcular_aeropuerto(zona or destino, vehiculo, nivel, nocturno, festivo)
 
-    if tipo == "urbano_km":
-        # Prioridad: Google Maps con origen+destino reales
+    elif tipo == "urbano_km":
         if origen and destino:
             resultado = calcular_por_zona(origen, destino, vehiculo, nivel, nocturno, festivo)
-            if resultado:
-                return resultado
-        # Fallback: Maps falló — usar fórmula urbana con km estimado
-        km_calc = float(km) if km else 12.0
-        return _calcular_urbano_formula(km_calc, vehiculo, nivel, nocturno, festivo)
+        if resultado is None:
+            km_calc = float(km) if km else 12.0
+            resultado = _calcular_urbano_formula(km_calc, vehiculo, nivel, nocturno, festivo)
 
-    if tipo == "por_horas":
+    elif tipo == "por_horas":
         if horas:
-            return calcular_por_horas(horas, vehiculo, nivel, nocturno, festivo)
-        return None
+            resultado = calcular_por_horas(horas, vehiculo, nivel, nocturno, festivo)
 
-    if tipo == "multi_dia":
+    elif tipo == "multi_dia":
         if destino and dias:
-            return calcular_multi_dia(destino, vehiculo, nivel, dias, nocturno, festivo, rural)
-        return None
+            resultado = calcular_multi_dia(destino, vehiculo, nivel, dias, nocturno, festivo, rural)
 
-    return None
+    return _aplicar_redondeo(resultado)

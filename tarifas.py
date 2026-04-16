@@ -317,6 +317,11 @@ def formatear_precio(valor):
     return f"${valor:,.0f}".replace(",", ".")
 
 
+def redondear_precio(precio: int) -> int:
+    """Redondea al millar más cercano para presentación comercial."""
+    return round(precio / 1000) * 1000
+
+
 def precio_corporativo(particular):
     """Precio particular + 8% para clientes corporativos."""
     return round(particular * 1.08)

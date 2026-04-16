@@ -498,6 +498,117 @@ def calcular_multi_dia(destino: str, vehiculo: str, nivel: str, dias: int,
     )
 
 
+def _precio_oneway_estimado(km: float, via_resumen: str, vehiculo: str) -> int:
+    """
+    Precio base estimado para UN trayecto (sin recargos, nivel particular).
+    Intenta corredor primero (calibrado al tarifario real).
+    Fallback: variables operativas sin factor deadhead.
+    """
+    corredor = _detectar_corredor(via_resumen)
+    if corredor:
+        ref_key   = corredor["referencia"]
+        km_ref    = corredor["km_ref"]
+        precio_ref = RUTAS.get(vehiculo, {}).get(ref_key)
+        if precio_ref and km_ref > 0:
+            return round(km * (precio_ref / km_ref) / 1000) * 1000
+
+    # Variables operativas — un solo sentido (sin ×2 de deadhead)
+    v = VARIABLES_OPERATIVAS
+    costo_var = v["combustible_km"] + v["desgaste_km"]
+    margen    = 1 - v["conductor_porcentaje"] - v["logistica_operativa"]
+    return round((km * costo_var) / margen / 1000) * 1000
+
+
+def calcular_ida_vuelta_con_espera(
+    origen: str,
+    destino: str,
+    vehiculo: str,
+    nivel: str,
+    horas_espera: float,
+    nocturno_ida: bool,
+    festivo: bool,
+    rural: bool,
+) -> Optional[ResultadoCotizacion]:
+    """
+    Servicio compuesto: ida + disponibilidad en destino + vuelta mismo día.
+
+    Desglose:
+    - Ida (con recargo nocturno si aplica)
+    - Disponibilidad en destino: horas × tarifa_hora del vehículo
+    - Vuelta (se asume diurna)
+    """
+    ruta = consultar_ruta(origen, destino)
+    if ruta is None:
+        return None
+
+    km          = ruta["km"]
+    via_resumen = ruta.get("via_resumen", "")
+    rural_real  = ruta.get("es_rural", False) or rural
+
+    precio_oneway = _precio_oneway_estimado(km, via_resumen, vehiculo)
+
+    precio_ida_base, recargos_ida     = _aplicar_recargos(precio_oneway, nocturno_ida, festivo, rural_real)
+    precio_vuelta_base, recargos_vta  = _aplicar_recargos(precio_oneway, False,        festivo, rural_real)
+
+    tarifa_hora   = TARIFAS.get(vehiculo, {}).get("hora", 52_000)
+    precio_espera = round(horas_espera * tarifa_hora)
+
+    subtotal = precio_ida_base + precio_espera + precio_vuelta_base
+
+    if nivel == "corporativo":
+        precio_final = round(subtotal * 1.08)
+    else:
+        precio_final = subtotal
+
+    # ── Desglose ─────────────────────────────────────────────────────────────
+    nombre_dest = destino.split(",")[0].strip()
+    sfx_ida = " · nocturno" if nocturno_ida else ""
+
+    desglose = [
+        {"concepto": f"Ida: Bogotá → {nombre_dest} ({km:.0f} km{sfx_ida})",
+         "valor": formatear_precio(precio_oneway)},
+    ]
+    for desc, monto in recargos_ida:
+        desglose.append({"concepto": f"  {desc}", "valor": formatear_precio(monto)})
+    desglose.append({"concepto": "  Subtotal ida", "valor": formatear_precio(precio_ida_base)})
+
+    desglose.append({
+        "concepto": f"Disponibilidad en destino ({horas_espera:.0f} h × {formatear_precio(tarifa_hora)}/h)",
+        "valor": formatear_precio(precio_espera),
+    })
+
+    desglose.append({
+        "concepto": f"Vuelta: {nombre_dest} → Bogotá ({km:.0f} km · diurno)",
+        "valor": formatear_precio(precio_oneway),
+    })
+    for desc, monto in recargos_vta:
+        desglose.append({"concepto": f"  {desc}", "valor": formatear_precio(monto)})
+    if recargos_vta:
+        desglose.append({"concepto": "  Subtotal vuelta", "valor": formatear_precio(precio_vuelta_base)})
+
+    if nivel == "corporativo":
+        desglose.append({"concepto": "Tarifa corporativo +8%",
+                         "valor": formatear_precio(precio_final - subtotal)})
+
+    desglose.append({"concepto": "Total", "valor": formatear_precio(precio_final)})
+
+    all_recargos = [d for d, _ in recargos_ida] + [d for d, _ in recargos_vta]
+
+    return ResultadoCotizacion(
+        precio_particular=subtotal,
+        precio_final=precio_final,
+        nivel=nivel,
+        desglose=desglose,
+        recargos_aplicados=all_recargos,
+        notas=(
+            f"Ida + {horas_espera:.0f} h disponibilidad en destino + Vuelta · "
+            f"{km:.1f} km c/trayecto · "
+            f"⚠️ Precio estimado — sujeto a confirmación del gerente"
+        ),
+        tipo_servicio="ida_vuelta_espera",
+    )
+
+
 def calcular_destino_no_cargado(km: float, vehiculo: str, nivel: str,
                                   nocturno: bool, festivo: bool, rural: bool) -> Optional[ResultadoCotizacion]:
     if km is None or km <= 0:
@@ -547,6 +658,16 @@ def cotizar(params: dict) -> Optional[ResultadoCotizacion]:
         return resultado
 
     if tipo == "ida_vuelta":
+        # Con horas en destino: servicio compuesto ida + espera + vuelta
+        if horas and float(horas) > 0:
+            resultado = calcular_ida_vuelta_con_espera(
+                origen, destino, vehiculo, nivel,
+                float(horas), nocturno, festivo, rural,
+            )
+            if resultado:
+                return resultado
+
+        # Ida y vuelta estándar (sin espera especificada)
         resultado = calcular_ruta_ida_vuelta(destino, vehiculo, nivel, nocturno, festivo, rural)
         if resultado is None:
             resultado = calcular_por_zona(origen, destino, vehiculo, nivel, nocturno, festivo)

@@ -49,15 +49,20 @@ def buscar_clave_destino(destino_raw: str, tabla: dict) -> Optional[str]:
 
 def _detectar_corredor(via_resumen: str) -> Optional[dict]:
     """
-    Mapea el 'summary' de Google Maps Directions a un corredor de salida de Bogotá.
+    Detecta el corredor de salida de Bogotá a partir del municipio destino.
+    Busca coincidencia en destinos_ref de cada corredor.
     Retorna el dict del corredor o None si no hay coincidencia.
     """
     if not via_resumen:
         return None
-    via_lower = via_resumen.lower()
+    texto = via_resumen.lower().strip()
+    # Normalización básica de tildes
+    texto = (texto
+             .replace("á", "a").replace("é", "e").replace("í", "i")
+             .replace("ó", "o").replace("ú", "u"))
     for corredor in CORREDORES.values():
-        for kw in corredor["keywords_via"]:
-            if kw in via_lower:
+        for dest in corredor["destinos_ref"]:
+            if dest.replace("_", " ") in texto or texto in dest.replace("_", " "):
                 return corredor
     return None
 
@@ -78,7 +83,7 @@ def calcular_intermunicipal_corredor(
         precio = km_nuevo × (precio_ref / km_ref)
 
     La ciudad de referencia se elige por el corredor de salida detectado a partir
-    del nombre de la vía que devuelve Google Maps Directions ('via_resumen').
+    del nombre del municipio destino ('via_resumen' contiene el municipio).
     """
     corredor = _detectar_corredor(via_resumen)
     if corredor is None:

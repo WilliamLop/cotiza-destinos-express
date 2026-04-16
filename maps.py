@@ -108,59 +108,37 @@ def consultar_ruta(origen: str, destino: str) -> dict:
     """
     Obtiene km reales, tiempo, municipio, zona y vía principal entre origen y destino.
 
-    Intenta Directions API primero (devuelve `via_resumen` con el nombre de la vía,
-    necesario para detectar el corredor de salida de Bogotá). Si falla, cae a
-    Distance Matrix (mismo resultado pero sin `via_resumen`).
+    Usa Distance Matrix para el cálculo de distancia. `via_resumen` se infiere
+    del nombre del municipio destino (para detectar el corredor de salida de Bogotá)
+    ya que Directions API no está habilitada en el proyecto.
 
-    Retorna dict con los resultados, o None si ambas consultas fallan.
+    Retorna dict con los resultados, o None si la consulta falla.
     """
     try:
         gmaps = _get_client()
 
-        ciudad_origen = _extraer_ciudad(origen)
-        destino_con_ctx = f"{destino}, {ciudad_origen}, Colombia" if ciudad_origen else f"{destino}, Colombia"
+        # No agregar ciudad de origen al destino: confunde a Maps cuando el
+        # destino está en otro municipio (ej: "Junín, Cundinamarca, Bogotá" → 9 km)
+        destino_con_ctx = f"{destino}, Colombia"
 
-        km = None
-        duracion_min = None
-        via_resumen = ""
-
-        # ── Intento 1: Directions API (da summary / nombre de vía) ──────────
-        try:
-            rutas = gmaps.directions(
-                origin=f"{origen}, Colombia",
-                destination=destino_con_ctx,
-                mode="driving",
-                language="es",
-                region="co",
+        # ── Distancia y duración (Distance Matrix) ───────────────────────────
+        matriz = gmaps.distance_matrix(
+            origins=[f"{origen}, Colombia"],
+            destinations=[destino_con_ctx],
+            mode="driving",
+            language="es",
+            units="metric",
+            region="co",
+        )
+        elemento = matriz["rows"][0]["elements"][0]
+        if elemento["status"] != "OK":
+            logging.warning(
+                f"[Maps] Distance Matrix status: {elemento['status']} | {origen} → {destino_con_ctx}"
             )
-            if rutas and rutas[0].get("legs"):
-                leg = rutas[0]["legs"][0]
-                km = round(leg["distance"]["value"] / 1000, 1)
-                duracion_min = round(leg["duration"]["value"] / 60)
-                via_resumen = rutas[0].get("summary", "")
-                logging.info(f"[Maps/Directions] {origen} → {destino}: {km} km · vía: '{via_resumen}'")
-        except Exception as e_dir:
-            logging.warning(f"[Maps] Directions API falló ({type(e_dir).__name__}), usando Distance Matrix")
-
-        # ── Intento 2: Distance Matrix (fallback sin via_resumen) ────────────
-        if km is None:
-            matriz = gmaps.distance_matrix(
-                origins=[f"{origen}, Colombia"],
-                destinations=[destino_con_ctx],
-                mode="driving",
-                language="es",
-                units="metric",
-                region="co",
-            )
-            elemento = matriz["rows"][0]["elements"][0]
-            if elemento["status"] != "OK":
-                logging.warning(
-                    f"[Maps] Distance Matrix status: {elemento['status']} | {origen} → {destino_con_ctx}"
-                )
-                return None
-            km = round(elemento["distance"]["value"] / 1000, 1)
-            duracion_min = round(elemento["duration"]["value"] / 60)
-            logging.info(f"[Maps/DistMatrix] {origen} → {destino}: {km} km")
+            return None
+        km = round(elemento["distance"]["value"] / 1000, 1)
+        duracion_min = round(elemento["duration"]["value"] / 60)
+        logging.info(f"[Maps] {origen} → {destino}: {km} km")
 
         # ── Municipio del destino (geocoding) ────────────────────────────────
         geo = gmaps.geocode(destino_con_ctx, language="es", region="co")
@@ -181,13 +159,17 @@ def consultar_ruta(origen: str, destino: str) -> dict:
 
         zona = detectar_zona(municipio, km)
 
+        # via_resumen: usamos el municipio como proxy del corredor (Directions API
+        # no está habilitada). El cotizador usa esto para detectar el corredor de salida.
+        via_resumen = municipio
+
         return {
             "km": km,
             "duracion_min": duracion_min,
             "municipio_destino": municipio,
             "zona": zona,
             "es_rural": es_rural,
-            "via_resumen": via_resumen,   # nombre de vía (ej: "Autopista Norte")
+            "via_resumen": via_resumen,
         }
 
     except Exception as e:
